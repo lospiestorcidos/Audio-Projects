@@ -32,15 +32,24 @@ npm run bench    # mide la carga del DSP con 8 voces
 *Compartir › Añadir a pantalla de inicio*. Funciona sin conexión. Safari no tiene Web MIDI:
 en este modo se toca con el teclado en pantalla.
 
-**Como app nativa (con MIDI y MPE):** hace falta un Mac con Xcode.
+**Como app nativa (con MIDI y MPE):** hace falta un Mac. Xcode y un Apple ID normal bastan;
+no hay que pagar la cuenta de desarrollador. Con cuenta gratuita la app caduca a los 7 días:
+para renovarla, conecta el iPad y pulsa Run otra vez (presets y samples se conservan).
 
-```bash
-npm install
-npm run ios        # compila la web y la copia al proyecto Xcode
-npm run ios:open   # abre Xcode; elige tu equipo de firma y pulsa Run con el iPad conectado
-```
+1. Doble clic en `abrir_en_xcode.command` (la primera vez: clic derecho › Abrir).
+   Instala dependencias, compila y abre Xcode. Si falta Node.js o Xcode, te lleva a su descarga.
+2. En Xcode: **Xcode › Settings › Accounts › +** y entra con tu Apple ID.
+3. En la barra lateral, pulsa **App** (icono azul) › pestaña **Signing & Capabilities**:
+   - marca **Automatically manage signing**;
+   - en **Team**, elige tu nombre (*Personal Team*);
+   - en **Bundle Identifier**, cambia `app.granos.synth` por algo único, p. ej. `com.tunombre.granos`.
+4. Conecta el iPad por cable y acepta "Confiar en este ordenador".
+5. En el iPad: **Ajustes › Privacidad y seguridad › Modo de desarrollador** › activar (reinicia).
+6. Arriba en Xcode, elige tu iPad como destino y pulsa **Run (▶)**.
+7. La primera vez, en el iPad: **Ajustes › General › VPN y gestión de dispositivos** ›
+   tu Apple ID › **Confiar**. Después abre Granos.
 
-El identificador `app.granos.synth` de `capacitor.config.ts` es provisional.
+El MIDI aparece en la página **Voces** de la app (dispositivos conectados y botón Bluetooth MIDI).
 
 ## Rendimiento medido
 
