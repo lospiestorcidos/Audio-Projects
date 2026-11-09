@@ -1,0 +1,107 @@
+// Dibujo de envolventes, LFO y respuesta del filtro.
+import { filterMagnitude } from '../audio/worklet/filter';
+import { Lfo } from '../audio/worklet/lfo';
+import type { Telemetry } from '../shared/params';
+import { C } from './theme';
+
+type G = CanvasRenderingContext2D;
+type Get = (id: string) => number;
+
+function frame(g: G, x: number, y: number, w: number, h: number, title: string, active: boolean) {
+  g.fillStyle = C.panel;
+  g.fillRect(x, y, w, h);
+  g.strokeStyle = active ? C.accent : C.grid;
+  g.lineWidth = active ? 2 : 1;
+  g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  g.fillStyle = active ? C.accent : C.dim;
+  g.font = '600 13px system-ui, sans-serif';
+  g.textBaseline = 'top';
+  g.fillText(title, x + 10, y + 8);
+}
+
+/** ADSR con el eje de tiempo comprimido (t^0.35) para que quepan tiempos de ms a minutos. */
+function envPath(g: G, x: number, y: number, w: number, h: number, a: number, d: number, s: number, r: number, color: string) {
+  const k = (t: number) => Math.pow(t, 0.35);
+  const wa = k(a), wd = k(d), ws = 0.8, wr = k(r), tot = wa + wd + ws + wr;
+  const X = (u: number) => x + (u / tot) * w, Y = (v: number) => y + h - v * h;
+  g.strokeStyle = color; g.lineWidth = 2.5; g.beginPath();
+  g.moveTo(X(0), Y(0));
+  for (let i = 1; i <= 20; i++) { const u = i / 20; g.lineTo(X(wa * u), Y((1 - Math.exp(-u * 1.466)) * 1.3)); }
+  for (let i = 1; i <= 24; i++) { const u = i / 24; g.lineTo(X(wa + wd * u), Y(s + (1 - s) * Math.exp(-u * 6.9))); }
+  g.lineTo(X(wa + wd + ws), Y(s));
+  for (let i = 1; i <= 24; i++) { const u = i / 24; g.lineTo(X(wa + wd + ws + wr * u), Y(s * Math.exp(-u * 6.9))); }
+  g.stroke();
+}
+
+function drawEnvs(g: G, x: number, y: number, w: number, h: number, get: Get, tel: Telemetry | null, sel: string) {
+  frame(g, x, y, w, h, 'ENV 1 · amplitud      ENV 2 · modulación', sel === 'env1' || sel === 'env2');
+  const ix = x + 14, iy = y + 34, iw = w - 44, ih = h - 48;
+  envPath(g, ix, iy, iw, ih, get('e2A'), get('e2D'), get('e2S'), get('e2R'), C.accent2);
+  envPath(g, ix, iy, iw, ih, get('e1A'), get('e1D'), get('e1S'), get('e1R'), C.accent);
+  if (tel) {
+    // Nivel en vivo de la voz más reciente.
+    g.fillStyle = C.accent; g.fillRect(x + w - 24, iy + ih - tel.mod[0] * ih, 7, tel.mod[0] * ih);
+    g.fillStyle = C.accent2; g.fillRect(x + w - 15, iy + ih - tel.mod[1] * ih, 7, tel.mod[1] * ih);
+  }
+}
+
+const lfo = new Lfo();
+function drawLfo(g: G, x: number, y: number, w: number, h: number, get: Get, tel: Telemetry | null, sel: string) {
+  frame(g, x, y, w, h, 'LFO · L / R', sel === 'lfo');
+  const ix = x + 14, iy = y + 34, iw = w - 44, ih = h - 48, mid = iy + ih / 2;
+  g.strokeStyle = C.grid; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(ix, mid); g.lineTo(ix + iw, mid); g.stroke();
+  const shape = get('lfoShape'), stereo = get('lfoStereo'), quant = get('lfoQuant'), amt = get('lfoAmount');
+  const steps = Math.max(60, Math.floor(iw / 2)), cycles = shape >= 5 ? 8 : 2;
+  const ys = [new Float32Array(steps), new Float32Array(steps)];
+  lfo.reset(get('lfoPhase'), 4242);
+  for (let i = 0; i < steps; i++) {
+    ys[0][i] = lfo.out[0]; ys[1][i] = lfo.out[1];
+    lfo.tick(cycles / steps, shape, stereo, quant);
+    if (i === 0) { ys[0][0] = lfo.out[0]; ys[1][0] = lfo.out[1]; }
+  }
+  for (const c of [1, 0]) {
+    g.strokeStyle = c ? C.accent2 : C.accent; g.lineWidth = 2.5; g.beginPath();
+    for (let i = 0; i < steps; i++) {
+      const px = ix + (i / (steps - 1)) * iw, py = mid - ys[c][i] * amt * ih * 0.48;
+      if (i) g.lineTo(px, py); else g.moveTo(px, py);
+    }
+    g.stroke();
+  }
+  if (tel) {
+    g.fillStyle = C.accent; g.fillRect(x + w - 24, mid - tel.mod[2] * ih * 0.48 - 3, 7, 6);
+    g.fillStyle = C.accent2; g.fillRect(x + w - 15, mid - tel.mod[3] * ih * 0.48 - 3, 7, 6);
+  }
+}
+
+function drawFilter(g: G, x: number, y: number, w: number, h: number, get: Get, sel: string) {
+  const on = get('filterOn') >= 0.5;
+  frame(g, x, y, w, h, on ? 'FILTRO' : 'FILTRO · apagado', sel === 'filter');
+  const ix = x + 14, iy = y + 34, iw = w - 28, ih = h - 48;
+  const DB_TOP = 24, DB_BOT = -48;
+  const Y = (db: number) => iy + ((DB_TOP - db) / (DB_TOP - DB_BOT)) * ih;
+  g.strokeStyle = C.grid; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(ix, Y(0)); g.lineTo(ix + iw, Y(0));
+  for (const f of [100, 1000, 10000]) {
+    const fx = ix + (Math.log(f / 20) / Math.log(1000)) * iw;
+    g.moveTo(fx, iy); g.lineTo(fx, iy + ih);
+  }
+  g.stroke();
+  const mode = get('filterMode'), freq = get('filterFreq'), res = get('filterRes'), width = get('filterWidth');
+  g.strokeStyle = on ? C.accent : C.dim; g.lineWidth = 2.5; g.beginPath();
+  for (let i = 0; i <= iw; i += 2) {
+    const f = 20 * Math.pow(1000, i / iw);
+    const db = Math.max(DB_BOT, Math.min(DB_TOP, 20 * Math.log10(filterMagnitude(mode, freq, res, width, f) + 1e-9)));
+    if (i) g.lineTo(ix + i, Y(db)); else g.moveTo(ix + i, Y(db));
+  }
+  g.stroke();
+}
+
+/** Vista de moduladores: envolventes, LFO y filtro. `sel` = grupo del parámetro tocado (se resalta). */
+export function drawModView(g: G, w: number, h: number, get: Get, tel: Telemetry | null, sel: string) {
+  g.fillStyle = C.bg; g.fillRect(0, 0, w, h);
+  const gap = 8, pw = (w - gap * 2) / 3;
+  drawEnvs(g, 0, 0, pw, h, get, tel, sel);
+  drawLfo(g, pw + gap, 0, pw, h, get, tel, sel);
+  drawFilter(g, (pw + gap) * 2, 0, pw, h, get, sel);
+}
