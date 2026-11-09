@@ -9,9 +9,13 @@
     "preview": "vite preview --host",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "bench": "vitest run tests/bench.test.ts"
+    "bench": "vitest run tests/bench.test.ts --reporter=verbose",
+    "ios": "vite build && cap sync ios",
+    "ios:open": "cap open ios"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
     "svelte": "^5.57.3",
@@ -19,5 +23,10 @@
     "typescript": "^6.0.3",
     "vite": "^8.3.7",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3"
   }
 }

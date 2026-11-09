@@ -44,8 +44,21 @@ export function base64ToBuf(s: string): ArrayBuffer {
   return b.buffer;
 }
 
-/** Descarga un archivo (en iPad abre la hoja de compartir / Guardar en Archivos). */
-export function downloadBlob(blob: Blob, name: string) {
+/**
+ * Entrega un archivo al usuario.
+ *  - App nativa: lo escribe en la caché y abre la hoja de compartir ("Guardar en Archivos").
+ *  - Navegador / PWA: descarga normal (en iPad acaba en Archivos › Descargas).
+ */
+export async function downloadBlob(blob: Blob, name: string): Promise<void> {
+  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  if (cap?.isNativePlatform?.()) {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    const { Share } = await import('@capacitor/share');
+    const data = bufToBase64(await blob.arrayBuffer());
+    const file = await Filesystem.writeFile({ path: name, data, directory: Directory.Cache });
+    await Share.share({ title: name, url: file.uri });
+    return;
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;

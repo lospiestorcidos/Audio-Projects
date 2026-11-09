@@ -3,6 +3,7 @@ import { AudioHost, type LoadedSample } from '../audio/host';
 import { factorySample } from '../audio/factory';
 import { base64ToBuf, bufToBase64, decodeWav16, downloadBlob, encodeWav } from '../audio/wav';
 import { PARAMS, clampParam, defaultValues, pdef, pidx } from '../shared/params';
+import { startMidi } from '../midi/midi';
 import { dbDel, dbGet, dbKeys, dbPut } from './db';
 import { FACTORY_PRESETS, type Preset, type PresetFile } from './presets';
 
@@ -30,6 +31,9 @@ export const ui = $state({
   capInputs: [] as { id: string; label: string }[],
   /** Hay una captura sonando que aún se puede cancelar. */
   capPending: false,
+  /** Estado de la entrada MIDI. */
+  midiKind: 'none' as 'native' | 'web' | 'none',
+  midiSources: [] as string[],
   cpu: 0,
   voices: 0,
   grains: 0,
@@ -140,7 +144,9 @@ export async function saveCapture() {
   const s = host.sample;
   if (!s) return;
   await dbPut('samples', s.name, s);
-  downloadBlob(new Blob([encodeWav(s.ch, s.sr)], { type: 'audio/wav' }), `${s.name}.wav`);
+  try {
+    await downloadBlob(new Blob([encodeWav(s.ch, s.sr)], { type: 'audio/wav' }), `${s.name}.wav`);
+  } catch { /* el usuario cerró la hoja de compartir: la captura ya está guardada en la app */ }
   remember('user', s); // ya es un sample "cargado": Cancel no lo descarta
   await refreshPresets();
   toast(`Guardado: ${s.name}`);
@@ -226,7 +232,7 @@ export function exportPreset() {
   const p = currentPreset(ui.presetName);
   const file: PresetFile = { granos: 1, preset: p };
   if (p.sample.kind === 'user' && host.sample) file.wav = bufToBase64(encodeWav(host.sample.ch, host.sample.sr));
-  downloadBlob(new Blob([JSON.stringify(file)], { type: 'application/json' }), `${p.name}.granos.json`);
+  void downloadBlob(new Blob([JSON.stringify(file)], { type: 'application/json' }), `${p.name}.granos.json`).catch(() => {});
 }
 
 export async function importPreset(file: File) {
@@ -251,6 +257,10 @@ export async function importPreset(file: File) {
 /** Arranque: carga el primer preset (el audio queda suspendido hasta el primer toque). */
 export async function boot() {
   void host.ensure();
+  void startMidi(
+    { send: (m) => { void host.resume(); host.send(m); }, hold: (on) => setParam('hold', on ? 1 : 0) },
+    (st) => { ui.midiKind = st.kind; ui.midiSources = st.sources; },
+  );
   await applyPreset(FACTORY_PRESETS[0]);
   void refreshPresets();
 }

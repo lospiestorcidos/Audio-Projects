@@ -2,6 +2,7 @@
   // Estructura general: barra superior, display (zona 1), modulación (zona 2),
   // fila de parámetros por páginas (zona 3) y teclado.
   import { onMount } from 'svelte';
+  import { isNative, showBluetoothMidi } from '../midi/midi';
   import { boot, host, ui, val } from '../state/store.svelte';
   import CapturePage from './CapturePage.svelte';
   import Choice from './Choice.svelte';
@@ -76,6 +77,19 @@
   </nav>
   <section class="params">
     {#if page.id === 'capture'}<CapturePage />{/if}
+    {#if page.id === 'voices'}
+      <div class="midi">
+        <b>MIDI</b>
+        {#if ui.midiKind === 'none'}
+          <span>{isNative() ? 'No disponible' : 'No disponible en este navegador. En iPad, usa la app nativa.'}</span>
+        {:else if ui.midiSources.length}
+          <span>{ui.midiSources.join(', ')}</span>
+        {:else}
+          <span>Ningún dispositivo conectado</span>
+        {/if}
+        {#if ui.midiKind === 'native'}<button onclick={showBluetoothMidi}>Bluetooth MIDI…</button>{/if}
+      </div>
+    {/if}
     {#each page.items as it (page.id + (it.id ?? Math.random()))}
       {#if it.k === 'sep'}
         <div class="sep"></div>
@@ -100,6 +114,8 @@
   nav button { flex: 1 1 0; min-height: 38px; border-radius: 10px 10px 0 0; border-bottom: none; padding: 0 6px; font-size: 14px; }
   .params { display: flex; align-items: center; gap: 2px; padding: 4px 10px; min-height: 112px; background: var(--panel); border-top: 2px solid var(--accent); overflow-x: auto; overflow-y: hidden; touch-action: pan-x; scrollbar-width: none; }
   .sep { width: 1px; align-self: stretch; margin: 10px 8px; background: var(--line); flex: 0 0 auto; }
+  .midi { order: 9; margin-left: 16px; display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--dim); }
+  .midi b { color: var(--text); }
   .keyboard { height: 23%; min-height: 130px; max-height: 220px; flex: 0 0 auto; }
   .unlock { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #000; font-weight: 700; padding: 10px 18px; border-radius: 999px; pointer-events: none; z-index: 30; }
   .toast { position: fixed; top: 112px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 12px; font-weight: 600; z-index: 30; pointer-events: none; }
