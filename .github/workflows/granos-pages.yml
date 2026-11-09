@@ -4,7 +4,10 @@ name: Granos · publicar PWA
 
 on:
   push:
-    branches: [main, claude/granos-granular-synth-d4ppkn]
+    branches: [main]
+    paths: ['granos/**', '.github/workflows/granos-pages.yml']
+  # En los pull requests solo se prueban los tests y la compilación (no se publica).
+  pull_request:
     paths: ['granos/**', '.github/workflows/granos-pages.yml']
   workflow_dispatch:
 
@@ -34,11 +37,14 @@ jobs:
       - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
         with:
           path: granos/dist
 
+  # GitHub Pages solo acepta publicaciones desde main.
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
