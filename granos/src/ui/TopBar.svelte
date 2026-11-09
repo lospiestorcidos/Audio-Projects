@@ -4,7 +4,7 @@
   import { FACTORY_SAMPLES } from '../audio/factory';
   import { FACTORY_PRESETS } from '../state/presets';
   import {
-    deletePreset, exportPreset, host, importPreset, loadFactorySample, loadFile, loadPresetByName,
+    deletePreset, exportPreset, host, importPreset, loadFactorySample, loadFile, loadPresetByName, loadSavedSample,
     savePreset, ui,
   } from '../state/store.svelte';
   import Choice from './Choice.svelte';
@@ -33,6 +33,7 @@
   function pickSample(e: Event) {
     const v = (e.currentTarget as HTMLSelectElement).value;
     if (v === '__file') fileInput.click();
+    else if (v.startsWith('u:')) void loadSavedSample(v.slice(2));
     else if (v) loadFactorySample(v);
     (e.currentTarget as HTMLSelectElement).value = '';
   }
@@ -69,6 +70,11 @@
     <optgroup label="De fábrica">
       {#each FACTORY_SAMPLES as s}<option value={s}>{s}</option>{/each}
     </optgroup>
+    {#if ui.userSamples.length}
+      <optgroup label="Guardados">
+        {#each ui.userSamples as s}<option value={`u:${s}`}>{s}</option>{/each}
+      </optgroup>
+    {/if}
   </select>
 
   <Choice id="mode" label="" />

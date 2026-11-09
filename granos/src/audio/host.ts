@@ -31,6 +31,15 @@ export class AudioHost {
   private params = defaultValues();
   private ready: Promise<void> | null = null;
 
+  // --- Capture ---
+  /** Nivel de pico de la entrada de Capture (0..1). */
+  inputLevel = 0;
+  private capNode: AudioWorkletNode | null = null;
+  private capStream: MediaStream | null = null;
+  private capSource: AudioNode | null = null;
+  private capLength = 8;
+  private grabWaiters: ((r: { ch: Float32Array[] | null; sr: number }) => void)[] = [];
+
   /** Crea el contexto y carga el worklet. No necesita gesto del usuario (arranca suspendido). */
   ensure(): Promise<void> {
     if (this.ready) return this.ready;
@@ -100,6 +109,88 @@ export class AudioHost {
   private postSample(s: LoadedSample) {
     const copy = s.ch.map((c) => c.slice());
     this.send({ t: 'sample', ch: copy, sr: s.sr }, copy.map((c) => c.buffer));
+  }
+
+  // ---------- Capture ----------
+
+  /** Entradas de audio disponibles (los nombres solo aparecen tras conceder el permiso). */
+  async listInputs(): Promise<{ id: string; label: string }[]> {
+    if (!navigator.mediaDevices?.enumerateDevices) return [];
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    return devs.filter((d) => d.kind === 'audioinput')
+      .map((d, i) => ({ id: d.deviceId, label: d.label || `Entrada ${i + 1}` }));
+  }
+
+  private setSession(type: 'playback' | 'play-and-record') {
+    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (session) { try { session.type = type; } catch { /* no disponible */ } }
+  }
+
+  /**
+   * Activa la grabación permanente. source: 'resample' (la salida del sinte) o el deviceId de una
+   * entrada ('' = micrófono por defecto). Lanza un error si no hay permiso de micrófono.
+   */
+  async enableCapture(source: string): Promise<void> {
+    await this.ensure();
+    this.disableCapture();
+    const ctx = this.ctx!;
+    if (!this.capNode) {
+      this.capNode = new AudioWorkletNode(ctx, 'granos-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+      this.capNode.port.onmessage = (e: MessageEvent) => {
+        const m = e.data as { t: 'level'; v: number } | { t: 'grab'; ch: Float32Array[] | null; sr: number };
+        if (m.t === 'level') this.inputLevel = m.v;
+        else this.grabWaiters.splice(0).forEach((w) => w({ ch: m.ch, sr: m.sr }));
+      };
+      // Un nodo sin salida conectada no se procesa: se conecta en silencio al destino.
+      const mute = ctx.createGain();
+      mute.gain.value = 0;
+      this.capNode.connect(mute).connect(ctx.destination);
+      this.capNode.port.postMessage({ t: 'len', seconds: this.capLength });
+    }
+    this.capNode.port.postMessage({ t: 'clear' });
+    if (source === 'resample') {
+      this.capSource = this.node!;
+      this.node!.connect(this.capNode);
+      return;
+    }
+    this.setSession('play-and-record');
+    // Sin procesado de voz: queremos la señal tal cual (micrófono o interfaz USB).
+    this.capStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: source ? { exact: source } : undefined,
+        echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+      },
+    });
+    this.capSource = ctx.createMediaStreamSource(this.capStream);
+    this.capSource.connect(this.capNode);
+    await this.resume();
+  }
+
+  disableCapture() {
+    if (this.capSource && this.capNode) {
+      try { this.capSource.disconnect(this.capNode); } catch { /* ya desconectado */ }
+    }
+    this.capSource = null;
+    if (this.capStream) {
+      this.capStream.getTracks().forEach((t) => t.stop());
+      this.capStream = null;
+      this.setSession('playback');
+    }
+    this.inputLevel = 0;
+  }
+
+  setCaptureLength(seconds: number) {
+    this.capLength = seconds;
+    this.capNode?.port.postMessage({ t: 'len', seconds });
+  }
+
+  /** Devuelve los últimos segundos grabados (sin normalizar), o null si no hay nada. */
+  grabCapture(): Promise<{ ch: Float32Array[] | null; sr: number }> {
+    if (!this.capNode) return Promise.resolve({ ch: null, sr: 0 });
+    return new Promise((resolve) => {
+      this.grabWaiters.push(resolve);
+      this.capNode!.port.postMessage({ t: 'grab' });
+    });
   }
 
   /** Decodifica un archivo de audio (WAV, AIFF, MP3, M4A…). */

@@ -1,6 +1,7 @@
 // AudioWorkletProcessor: envoltorio fino del motor. Todo el DSP corre aquí, en el hilo de audio.
 import type { EngineMsg } from '../../shared/params';
 import { GranosEngine } from './engine';
+import { RingRecorder } from './ring';
 
 // Declaraciones mínimas del ámbito global del worklet (no están en lib.dom).
 declare const sampleRate: number;
@@ -56,3 +57,39 @@ class GranosProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('granos', GranosProcessor);
+
+// Grabadora de Capture: escucha su entrada (micrófono, interfaz USB o la salida del sinte)
+// y guarda siempre los últimos segundos. No produce sonido.
+class CaptureProcessor extends AudioWorkletProcessor {
+  private ring = new RingRecorder(sampleRate, 8);
+  private since = 0;
+
+  constructor() {
+    super();
+    this.port.onmessage = (e: MessageEvent) => {
+      const m = e.data as { t: 'len'; seconds: number } | { t: 'grab' } | { t: 'clear' };
+      if (m.t === 'len') this.ring.resize(m.seconds);
+      else if (m.t === 'clear') this.ring.clear();
+      else {
+        const ch = this.ring.grab();
+        this.port.postMessage({ t: 'grab', ch, sr: sampleRate }, ch ? ch.map((c) => c.buffer) : []);
+      }
+    };
+  }
+
+  process(inputs: Float32Array[][]): boolean {
+    const inp = inputs[0];
+    if (inp && inp[0]) {
+      this.ring.write(inp[0], inp[1] ?? null, inp[0].length);
+      this.since += inp[0].length;
+      if (this.since >= sampleRate / 15) { // nivel de entrada para el medidor de la UI
+        this.since = 0;
+        this.port.postMessage({ t: 'level', v: this.ring.peak });
+        this.ring.peak = 0;
+      }
+    }
+    return true;
+  }
+}
+
+registerProcessor('granos-capture', CaptureProcessor);

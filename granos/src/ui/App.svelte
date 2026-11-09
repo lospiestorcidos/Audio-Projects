@@ -3,6 +3,7 @@
   // fila de parámetros por páginas (zona 3) y teclado.
   import { onMount } from 'svelte';
   import { boot, host, ui, val } from '../state/store.svelte';
+  import CapturePage from './CapturePage.svelte';
   import Choice from './Choice.svelte';
   import Display from './Display.svelte';
   import Keyboard from './Keyboard.svelte';
@@ -50,6 +51,7 @@
       K('lfoQuant'), T('lfoModWheel', 'Mod Wheel'),
     ] },
     { id: 'voices', title: 'Voces', items: [T('mono'), K('glide'), K('pbRange')] },
+    { id: 'capture', title: 'Capture', items: [] },
   ];
   const page = $derived(PAGES.find((p) => p.id === ui.page) ?? PAGES[0]);
 
@@ -73,6 +75,7 @@
     {/each}
   </nav>
   <section class="params">
+    {#if page.id === 'capture'}<CapturePage />{/if}
     {#each page.items as it (page.id + (it.id ?? Math.random()))}
       {#if it.k === 'sep'}
         <div class="sep"></div>
@@ -99,5 +102,5 @@
   .sep { width: 1px; align-self: stretch; margin: 10px 8px; background: var(--line); flex: 0 0 auto; }
   .keyboard { height: 23%; min-height: 130px; max-height: 220px; flex: 0 0 auto; }
   .unlock { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #000; font-weight: 700; padding: 10px 18px; border-radius: 999px; pointer-events: none; z-index: 30; }
-  .toast { position: fixed; bottom: 26%; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 12px; font-weight: 600; z-index: 30; pointer-events: none; }
+  .toast { position: fixed; top: 112px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 12px; font-weight: 600; z-index: 30; pointer-events: none; }
 </style>

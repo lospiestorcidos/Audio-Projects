@@ -22,6 +22,14 @@ export const ui = $state({
   sampleVersion: 0,
   presetName: FACTORY_PRESETS[0].name,
   userPresets: [] as string[],
+  userSamples: [] as string[],
+  // Capture
+  capOn: false,
+  capSource: '' as string, // '' = micrófono por defecto, 'resample' o deviceId
+  capLength: 8,
+  capInputs: [] as { id: string; label: string }[],
+  /** Hay una captura sonando que aún se puede cancelar. */
+  capPending: false,
   cpu: 0,
   voices: 0,
   grains: 0,
@@ -56,14 +64,86 @@ export function toast(msg: string) {
 
 // ---------- Samples ----------
 
+/** Último sample cargado (no capturado): a él vuelve Cancel. */
+let lastLoaded: { kind: 'factory' | 'user'; sample: LoadedSample } | null = null;
+
+function remember(kind: 'factory' | 'user', s: LoadedSample) {
+  lastLoaded = { kind, sample: { name: s.name, sr: s.sr, ch: s.ch.map((c) => c.slice()) } };
+  ui.capPending = false;
+}
+
 export function loadUserSample(s: LoadedSample) {
   ui.sampleKind = 'user';
   host.setSample(s);
+  remember('user', s);
 }
 
 export function loadFactorySample(name: string) {
   ui.sampleKind = 'factory';
-  host.setSample(factorySample(name));
+  const s = factorySample(name);
+  host.setSample(s);
+  remember('factory', s);
+}
+
+export async function loadSavedSample(name: string) {
+  const s = await dbGet<LoadedSample>('samples', name);
+  if (s) loadUserSample(s);
+}
+
+// ---------- Capture ----------
+
+export async function setCaptureOn(on: boolean) {
+  if (!on) { host.disableCapture(); ui.capOn = false; return; }
+  try {
+    await host.enableCapture(ui.capSource);
+    ui.capOn = true;
+    ui.capInputs = await host.listInputs(); // ahora ya con nombres
+  } catch {
+    ui.capOn = false;
+    toast('No hay acceso a la entrada de audio. Revisa el permiso de micrófono.');
+  }
+}
+
+export async function setCaptureSource(src: string) {
+  ui.capSource = src;
+  if (ui.capOn) await setCaptureOn(true);
+}
+
+export function setCaptureLength(seconds: number) {
+  ui.capLength = seconds;
+  host.setCaptureLength(seconds);
+}
+
+/** Sustituye el sample por los últimos segundos grabados. Los parámetros no cambian. */
+export async function capture() {
+  const r = await host.grabCapture();
+  if (!r.ch || r.ch[0].length < 2048) { toast('Todavía no hay audio grabado'); return; }
+  const t = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const name = `Captura ${pad(t.getHours())}.${pad(t.getMinutes())}.${pad(t.getSeconds())}`;
+  ui.sampleKind = 'user';
+  host.setSample({ name, ch: r.ch, sr: r.sr }); // se normaliza a 0 dB
+  ui.capPending = true;
+}
+
+/** Descarta la captura y vuelve al último sample cargado. */
+export function cancelCapture() {
+  if (!lastLoaded) return;
+  const { kind, sample } = lastLoaded;
+  ui.sampleKind = kind;
+  host.setSample({ name: sample.name, sr: sample.sr, ch: sample.ch.map((c) => c.slice()) });
+  ui.capPending = false;
+}
+
+/** Guarda la captura en la app (IndexedDB) y la exporta como WAV a Archivos. */
+export async function saveCapture() {
+  const s = host.sample;
+  if (!s) return;
+  await dbPut('samples', s.name, s);
+  downloadBlob(new Blob([encodeWav(s.ch, s.sr)], { type: 'audio/wav' }), `${s.name}.wav`);
+  remember('user', s); // ya es un sample "cargado": Cancel no lo descarta
+  await refreshPresets();
+  toast(`Guardado: ${s.name}`);
 }
 
 /** Carga un archivo de audio elegido en Archivos o soltado sobre la app. */
@@ -110,7 +190,10 @@ export async function applyPreset(p: Preset) {
 }
 
 export async function refreshPresets() {
-  try { ui.userPresets = (await dbKeys('presets')).sort(); } catch { ui.userPresets = []; }
+  try {
+    ui.userPresets = (await dbKeys('presets')).sort();
+    ui.userSamples = (await dbKeys('samples')).sort();
+  } catch { ui.userPresets = []; ui.userSamples = []; }
 }
 
 export async function loadPresetByName(name: string) {
