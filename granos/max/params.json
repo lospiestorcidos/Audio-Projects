@@ -1,0 +1,399 @@
+[
+ {
+  "name": "Grano",
+  "params": [
+   {
+    "id": "mode",
+    "name": "Modo",
+    "options": [
+     "Classic",
+     "Loop",
+     "Cloud"
+    ],
+    "initial": 0
+   },
+   {
+    "id": "position",
+    "name": "Position",
+    "options": null,
+    "initial": 25
+   },
+   {
+    "id": "size",
+    "name": "Grain Size",
+    "options": null,
+    "initial": 59.27
+   },
+   {
+    "id": "shape",
+    "name": "Shape",
+    "options": null,
+    "initial": 50
+   },
+   {
+    "id": "reverse",
+    "name": "Reverse",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "density",
+    "name": "Density",
+    "options": null,
+    "initial": 36.84
+   },
+   {
+    "id": "spread",
+    "name": "Spread",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "volume",
+    "name": "Volume",
+    "options": null,
+    "initial": 75
+   }
+  ]
+ },
+ {
+  "name": "Nota",
+  "params": [
+   {
+    "id": "transpose",
+    "name": "Transpose",
+    "options": null,
+    "initial": 50
+   },
+   {
+    "id": "tune",
+    "name": "Tune",
+    "options": null,
+    "initial": 50
+   },
+   {
+    "id": "pbRange",
+    "name": "PB Range",
+    "options": null,
+    "initial": 4.17
+   },
+   {
+    "id": "mono",
+    "name": "Mono",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "initial": 0
+   },
+   {
+    "id": "glide",
+    "name": "Glide",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "scanSpeed",
+    "name": "Scan Speed",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "scanDist",
+    "name": "Scan Dist",
+    "options": null,
+    "initial": 100
+   },
+   {
+    "id": "scanLoop",
+    "name": "Scan Loop",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "initial": 1
+   }
+  ]
+ },
+ {
+  "name": "Variacion",
+  "params": [
+   {
+    "id": "variation",
+    "name": "Var Amount",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "varPos",
+    "name": "Var Position",
+    "options": null,
+    "initial": 5
+   },
+   {
+    "id": "varSize",
+    "name": "Var Size",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "varPitch",
+    "name": "Var Transp",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "varVol",
+    "name": "Var Volume",
+    "options": null,
+    "initial": 0
+   },
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "Filtro",
+  "params": [
+   {
+    "id": "filterOn",
+    "name": "Filter On",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "initial": 1
+   },
+   {
+    "id": "filterMode",
+    "name": "Filter Type",
+    "options": [
+     "LP 24",
+     "LP 12",
+     "LP→HP",
+     "LP→Notch",
+     "Notch",
+     "Notch ×2",
+     "HP→Notch",
+     "HP 12",
+     "HP 24"
+    ],
+    "initial": 0
+   },
+   {
+    "id": "filterFreq",
+    "name": "Filter Freq",
+    "options": null,
+    "initial": 100
+   },
+   {
+    "id": "filterRes",
+    "name": "Filter Reso",
+    "options": null,
+    "initial": 15
+   },
+   {
+    "id": "filterWidth",
+    "name": "Filter Width",
+    "options": null,
+    "initial": 37.5
+   },
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "Env 1",
+  "params": [
+   {
+    "id": "e1A",
+    "name": "E1 Attack",
+    "options": null,
+    "initial": 16.25
+   },
+   {
+    "id": "e1D",
+    "name": "E1 Decay",
+    "options": null,
+    "initial": 56.49
+   },
+   {
+    "id": "e1S",
+    "name": "E1 Sustain",
+    "options": null,
+    "initial": 100
+   },
+   {
+    "id": "e1R",
+    "name": "E1 Release",
+    "options": null,
+    "initial": 51.84
+   },
+   {
+    "id": "e1Key",
+    "name": "E1 Key",
+    "options": null,
+    "initial": 50
+   },
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "Env 2",
+  "params": [
+   {
+    "id": "e2A",
+    "name": "E2 Attack",
+    "options": null,
+    "initial": 62.75
+   },
+   {
+    "id": "e2D",
+    "name": "E2 Decay",
+    "options": null,
+    "initial": 62.79
+   },
+   {
+    "id": "e2S",
+    "name": "E2 Sustain",
+    "options": null,
+    "initial": 50
+   },
+   {
+    "id": "e2R",
+    "name": "E2 Release",
+    "options": null,
+    "initial": 56.49
+   },
+   {
+    "id": "e2Key",
+    "name": "E2 Key",
+    "options": null,
+    "initial": 50
+   },
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "LFO 1",
+  "params": [
+   {
+    "id": "lfoMode",
+    "name": "LFO Mode",
+    "options": [
+     "Libre",
+     "Sync",
+     "Audio"
+    ],
+    "initial": 0
+   },
+   {
+    "id": "lfoRate",
+    "name": "LFO Rate",
+    "options": null,
+    "initial": 60.59
+   },
+   {
+    "id": "lfoShape",
+    "name": "LFO Shape",
+    "options": [
+     "Sine",
+     "Triangle",
+     "Up",
+     "Down",
+     "Rect",
+     "S&H",
+     "Rand",
+     "Move"
+    ],
+    "initial": 0
+   },
+   {
+    "id": "lfoAmount",
+    "name": "LFO Amount",
+    "options": null,
+    "initial": 100
+   },
+   {
+    "id": "lfoStereo",
+    "name": "LFO Stereo",
+    "options": [
+     "0°",
+     "90°",
+     "180°"
+    ],
+    "initial": 0
+   },
+   {
+    "id": "lfoQuant",
+    "name": "LFO Quant",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "lfoPhase",
+    "name": "LFO Phase",
+    "options": null,
+    "initial": 0
+   },
+   {
+    "id": "lfoRandPhase",
+    "name": "LFO Rnd Phase",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "initial": 0
+   }
+  ]
+ },
+ {
+  "name": "LFO 2",
+  "params": [
+   {
+    "id": "bpm",
+    "name": "BPM",
+    "options": null,
+    "initial": 40
+   },
+   {
+    "id": "lfoModWheel",
+    "name": "LFO ModWheel",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "initial": 0
+   },
+   {
+    "id": "lfoDiv",
+    "name": "LFO Sync",
+    "options": [
+     "1/16",
+     "1/8",
+     "1/4",
+     "1/2",
+     "1 compás",
+     "2 compases"
+    ],
+    "initial": 2
+   },
+   {
+    "id": "lfoAudio",
+    "name": "LFO Audio Rate",
+    "options": null,
+    "initial": 46.21
+   },
+   null,
+   null,
+   null,
+   null
+  ]
+ }
+]

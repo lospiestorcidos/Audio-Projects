@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MidiParser } from '../src/midi/parser';
+import { MidiByteStream, MidiParser } from '../src/midi/parser';
 import type { EngineMsg } from '../src/shared/params';
 
 function setup() {
@@ -43,5 +43,17 @@ describe('Fase 8 · parser MIDI / MPE', () => {
     p.feed([0xb0, 1, 127, 0xb0, 2, 0, 0xb0, 64, 127, 0xb0, 64, 0, 0xb0, 123, 0]);
     expect(out).toEqual([{ t: 'wheel', v: 1 }, { t: 'wheel', v: 0 }, { t: 'panic' }]);
     expect(holds).toEqual([true, false]);
+  });
+  it('flujo de bytes de Max: running status, tiempo real intercalado y sysex', () => {
+    const { p, out } = setup();
+    const st = new MidiByteStream(p);
+    // note-on, reloj en medio, segunda nota con running status, sysex, presión de canal, note-off
+    for (const b of [0x90, 60, 0xf8, 100, 64, 90, 0xf0, 1, 2, 3, 0xf7, 0xd0, 80, 0x80, 60, 0]) st.push(b);
+    expect(out.filter((m) => m.t === 'on')).toEqual([
+      { t: 'on', id: 60, note: 60, vel: 100 / 127 },
+      { t: 'on', id: 64, note: 64, vel: 90 / 127 },
+    ]);
+    expect(out.some((m) => m.t === 'expr' && Math.abs(m.press - 80 / 127) < 1e-6)).toBe(true);
+    expect(out[out.length - 1]).toEqual({ t: 'off', id: 60 });
   });
 });

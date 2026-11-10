@@ -3,7 +3,8 @@ import { AudioHost, type LoadedSample } from '../audio/host';
 import { factorySample } from '../audio/factory';
 import { base64ToBuf, bufToBase64, decodeWav16, downloadBlob, encodeWav } from '../audio/wav';
 import { MOD_TABLE, PARAMS, clampParam, defaultValues, pdef, pidx } from '../shared/params';
-import { startMidi } from '../midi/midi';
+import { maxSend, startMidi } from '../midi/midi';
+import { fromMax, MAX_PARAM_IDS, toMax } from '../shared/maxparams';
 import { dbDel, dbGet, dbKeys, dbPut } from './db';
 import { FACTORY_PRESETS, type Preset, type PresetFile } from './presets';
 
@@ -63,7 +64,7 @@ export const ui = $state({
   /** Hay una captura sonando que aún se puede cancelar. */
   capPending: false,
   /** Estado de la entrada MIDI. */
-  midiKind: 'none' as 'native' | 'web' | 'none',
+  midiKind: 'none' as 'native' | 'web' | 'max' | 'none',
   midiSources: [] as string[],
   cpu: 0,
   voices: 0,
@@ -78,12 +79,22 @@ export function val(id: string): number {
   return ui.values[pidx(id)];
 }
 
+// --- Max for Live: los parámetros se reflejan en los live.dial del dispositivo ---
+/** Live ya envió sus valores: a partir de aquí los cambios de la app se escriben en Live. */
+let maxSynced = false;
+/** El cambio en curso viene de Live: no se le devuelve (evita bucles). */
+let maxApplying = false;
+function tellMax(id: string) {
+  if (maxSynced && !maxApplying && MAX_PARAM_IDS.has(id)) maxSend(id, toMax(pdef(id), ui.values[pidx(id)]));
+}
+
 export function setParam(id: string, v: number) {
   const d = pdef(id), i = pidx(id);
   v = clampParam(d, v);
   if (ui.values[i] === v) return;
   ui.values[i] = v;
   host.setParam(i, v);
+  tellMax(id);
 }
 
 export function setLayout(l: 'classic' | 'pages') {
@@ -239,6 +250,7 @@ function applyParams(params: Record<string, number>) {
   ui.values = Array.from(a);
   host.send({ t: 'panic' });
   host.setAllParams(a);
+  for (const id of MAX_PARAM_IDS) tellMax(id); // un preset cargado en la app actualiza Live
 }
 
 export async function applyPreset(p: Preset) {
@@ -317,6 +329,13 @@ export async function boot() {
   void startMidi(
     { send: (m) => { void host.resume(); host.send(m); }, hold: (on) => setParam('hold', on ? 1 : 0),
       control: (st, d1, d2) => midiHooks.control(st, d1, d2),
+      maxParam: (id, x) => {
+        if (!MAX_PARAM_IDS.has(id)) return;
+        maxApplying = true;
+        setParam(id, fromMax(pdef(id), x));
+        maxApplying = false;
+      },
+      maxSynced: () => { maxSynced = true; },
     },
     (st) => { ui.midiKind = st.kind; ui.midiSources = st.sources; },
   );
