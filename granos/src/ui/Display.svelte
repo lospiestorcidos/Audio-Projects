@@ -7,6 +7,7 @@
   import { pdef } from '../shared/params';
   import { host, loadFile, select, setParam, ui, val } from '../state/store.svelte';
 
+  let { compact = false }: { compact?: boolean } = $props();
   let canvas: HTMLCanvasElement;
   let wrap: HTMLDivElement;
   const wave = new WaveView();
@@ -48,7 +49,7 @@
       } else {
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         g.save(); g.scale(dpr, dpr);
-        drawModView(g, w / dpr, h / dpr, val, tel, selGroup);
+        drawModView(g, w / dpr, h / dpr, val, tel, selGroup, compact);
         g.restore();
       }
     };
@@ -83,7 +84,7 @@
 </script>
 
 <div
-  class="display" class:dropping role="application" aria-label="Display"
+  class="display" class:compact class:dropping role="application" aria-label="Display"
   ondragover={(e) => { e.preventDefault(); dropping = true; }}
   ondragleave={() => (dropping = false)} ondrop={drop}
 >
@@ -92,15 +93,25 @@
     {#if showing === 'wave'}<div class="name">{ui.sampleName}</div>{/if}
     {#if dropping}<div class="drop">Suelta el audio aquí</div>{/if}
   </div>
-  <div class="side">
-    {#each [['auto', 'Auto'], ['wave', 'Onda'], ['mod', 'Mod']] as [k, t]}
-      <button class:on={ui.display === k} onclick={() => (ui.display = k as typeof ui.display)}>{t}</button>
-    {/each}
-    <div class="sp"></div>
-    <button aria-label="Acercar" onclick={() => (ui.zoom = Math.min(64, ui.zoom * 2))}>+</button>
-    <button aria-label="Alejar" onclick={() => (ui.zoom = Math.max(1, ui.zoom / 2))}>−</button>
-    <button class:on={ui.zoom === 1} onclick={() => (ui.zoom = 1)}>ALL</button>
-  </div>
+  {#if compact}
+    <!-- Pantalla pequeña: dos botones que van rotando entre las opciones. -->
+    <div class="side">
+      <button onclick={() => (ui.display = ui.display === 'auto' ? 'wave' : ui.display === 'wave' ? 'mod' : 'auto')}>
+        {ui.display === 'auto' ? 'Auto' : ui.display === 'wave' ? 'Onda' : 'Mod'}
+      </button>
+      <button onclick={() => (ui.zoom = ui.zoom >= 64 ? 1 : ui.zoom * 2)}>{ui.zoom === 1 ? 'ALL' : `×${ui.zoom}`}</button>
+    </div>
+  {:else}
+    <div class="side">
+      {#each [['auto', 'Auto'], ['wave', 'Onda'], ['mod', 'Mod']] as [k, t]}
+        <button class:on={ui.display === k} onclick={() => (ui.display = k as typeof ui.display)}>{t}</button>
+      {/each}
+      <div class="sp"></div>
+      <button aria-label="Acercar" onclick={() => (ui.zoom = Math.min(64, ui.zoom * 2))}>+</button>
+      <button aria-label="Alejar" onclick={() => (ui.zoom = Math.max(1, ui.zoom / 2))}>−</button>
+      <button class:on={ui.zoom === 1} onclick={() => (ui.zoom = 1)}>ALL</button>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -113,4 +124,7 @@
   .side { display: flex; flex-direction: column; gap: 6px; width: 64px; flex: 0 0 auto; }
   .side button { padding: 0; min-height: 0; flex: 1 1 0; max-height: 48px; font-size: 14px; }
   .sp { flex: 0 1 12px; }
+  .compact { padding: 6px; gap: 6px; }
+  .compact .side { width: 50px; }
+  .compact .side button { max-height: none; font-size: 13px; }
 </style>

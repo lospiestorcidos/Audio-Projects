@@ -34,7 +34,7 @@ function envPath(g: G, x: number, y: number, w: number, h: number, a: number, d:
 }
 
 function drawEnvs(g: G, x: number, y: number, w: number, h: number, get: Get, tel: Telemetry | null, sel: string) {
-  frame(g, x, y, w, h, 'ENV 1 · amplitud      ENV 2 · modulación', sel === 'env1' || sel === 'env2');
+  frame(g, x, y, w, h, w < 300 ? 'ENV 1 · ENV 2' : 'ENV 1 · amplitud      ENV 2 · modulación', sel === 'env1' || sel === 'env2');
   const ix = x + 14, iy = y + 34, iw = w - 44, ih = h - 48;
   envPath(g, ix, iy, iw, ih, get('e2A'), get('e2D'), get('e2S'), get('e2R'), C.accent2);
   envPath(g, ix, iy, iw, ih, get('e1A'), get('e1D'), get('e1S'), get('e1R'), C.accent);
@@ -97,9 +97,18 @@ function drawFilter(g: G, x: number, y: number, w: number, h: number, get: Get, 
   g.stroke();
 }
 
-/** Vista de moduladores: envolventes, LFO y filtro. `sel` = grupo del parámetro tocado (se resalta). */
-export function drawModView(g: G, w: number, h: number, get: Get, tel: Telemetry | null, sel: string) {
+/**
+ * Vista de moduladores: envolventes, LFO y filtro. `sel` = grupo del parámetro tocado (se resalta).
+ * Con `single` (pantallas pequeñas) se dibuja solo el panel de ese grupo, a todo el ancho.
+ */
+export function drawModView(g: G, w: number, h: number, get: Get, tel: Telemetry | null, sel: string, single = false) {
   g.fillStyle = C.bg; g.fillRect(0, 0, w, h);
+  if (single) {
+    if (sel === 'lfo') drawLfo(g, 0, 0, w, h, get, tel, sel);
+    else if (sel === 'filter') drawFilter(g, 0, 0, w, h, get, sel);
+    else drawEnvs(g, 0, 0, w, h, get, tel, sel);
+    return;
+  }
   const gap = 8, pw = (w - gap * 2) / 3;
   drawEnvs(g, 0, 0, pw, h, get, tel, sel);
   drawLfo(g, pw + gap, 0, pw, h, get, tel, sel);
