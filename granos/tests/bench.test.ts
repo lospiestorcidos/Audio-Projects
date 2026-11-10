@@ -23,5 +23,5 @@ describe('rendimiento', () => {
       spread: 1, 'filterFreq>lfo': 0.5, 'position>lfo': 0.3, lfoRate: 3,
     });
     expect(worst).toBeLessThan(0.5);
-  });
+  }, 60000); // renderiza 44 s de audio: en máquinas lentas pasa del límite de 5 s por defecto
 });

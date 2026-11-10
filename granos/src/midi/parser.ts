@@ -79,3 +79,34 @@ export class MidiParser {
     for (let i = 0; i + 2 < bytes.length; i += 3) this.message(bytes[i], bytes[i + 1], bytes[i + 2]);
   }
 }
+
+/**
+ * Convierte un flujo de bytes MIDI sueltos (como los entrega [midiin] de Max) en mensajes completos.
+ * Admite "running status"; ignora tiempo real y sysex.
+ */
+export class MidiByteStream {
+  private status = 0;
+  private data: number[] = [];
+  private inSysex = false;
+
+  constructor(private parser: MidiParser) {}
+
+  push(byte: number) {
+    byte &= 0xff;
+    if (byte >= 0xf8) return; // reloj, start, stop…: no interrumpen el mensaje en curso
+    if (byte >= 0x80) {
+      this.inSysex = byte === 0xf0;
+      // Los mensajes de sistema (0xF1–0xF7) cancelan el running status.
+      this.status = byte < 0xf0 ? byte : 0;
+      this.data.length = 0;
+      return;
+    }
+    if (this.inSysex || !this.status) return;
+    this.data.push(byte);
+    const type = this.status & 0xf0;
+    const need = type === 0xc0 || type === 0xd0 ? 1 : 2; // programa y presión de canal llevan un solo dato
+    if (this.data.length < need) return;
+    this.parser.message(this.status, this.data[0], need === 2 ? this.data[1] : 0);
+    this.data.length = 0; // el status se conserva (running status)
+  }
+}

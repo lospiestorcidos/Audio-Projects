@@ -63,7 +63,7 @@ export const ui = $state({
   /** Hay una captura sonando que aún se puede cancelar. */
   capPending: false,
   /** Estado de la entrada MIDI. */
-  midiKind: 'none' as 'native' | 'web' | 'none',
+  midiKind: 'none' as 'native' | 'web' | 'max' | 'none',
   midiSources: [] as string[],
   cpu: 0,
   voices: 0,
