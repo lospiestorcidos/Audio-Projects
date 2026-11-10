@@ -34,8 +34,7 @@
   }
   function pickSample(e: Event) {
     const v = (e.currentTarget as HTMLSelectElement).value;
-    if (v === '__file') fileInput.click();
-    else if (v.startsWith('u:')) void loadSavedSample(v.slice(2));
+    if (v.startsWith('u:')) void loadSavedSample(v.slice(2));
     else if (v) loadFactorySample(v);
     (e.currentTarget as HTMLSelectElement).value = '';
   }
@@ -58,6 +57,8 @@
     <button aria-label="Menú de presets" onclick={() => (menu = !menu)}>⋯</button>
     {#if menu}
       <div class="menu">
+        <button onclick={() => { fileInput.click(); menu = false; }}>Cargar audio desde Archivos…</button>
+        <hr />
         <button onclick={save}>Guardar preset…</button>
         <button onclick={() => { exportPreset(); menu = false; }}>Exportar</button>
         <button onclick={() => { presetInput.click(); menu = false; }}>Importar…</button>
@@ -79,9 +80,13 @@
     {/if}
   </div>
 
+  <!-- El selector de archivos de iPad solo se abre desde un toque directo en un botón,
+       no desde el cambio de un menú desplegable. -->
+  <button class="load" aria-label="Cargar audio desde Archivos" onclick={() => fileInput.click()}>
+    <span aria-hidden="true">📂</span>{#if !compact}<span> Cargar</span>{/if}
+  </button>
   <select class="sample" aria-label="Sample" onchange={pickSample}>
     <option value="">Sample: {ui.sampleName}</option>
-    <option value="__file">Cargar desde Archivos…</option>
     <optgroup label="De fábrica">
       {#each FACTORY_SAMPLES as s}<option value={s}>{s}</option>{/each}
     </optgroup>
@@ -118,6 +123,7 @@
   .meter b { color: var(--text); }
   .meter.hot b { color: var(--hot); }
   .menuwrap { position: relative; }
+  .load { flex: 0 0 auto; padding: 0 12px; }
   .menu { position: absolute; top: 46px; left: 0; z-index: 20; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; width: 250px; max-height: 80vh; overflow-y: auto; }
   .menu button { text-align: left; }
   .menu hr { width: 100%; border: none; border-top: 1px solid var(--line); margin: 2px 0; }
