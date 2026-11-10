@@ -5,7 +5,10 @@
   import { onMount } from 'svelte';
   import { host, setParam, ui, val } from '../state/store.svelte';
 
-  const KEYS = 25;
+  let { compact = false }: { compact?: boolean } = $props();
+  let width = $state(0);
+  // En pantallas pequeñas hay menos teclas, para que cada una se pueda tocar bien.
+  const KEYS = $derived(compact ? Math.max(8, Math.min(25, Math.round(width / 46))) : 25);
   let base = $state(48);
   let velocity = $state(100);
   let wheel = $state(0);
@@ -92,7 +95,7 @@
   }
 </script>
 
-<div class="kb">
+<div class="kb" class:compact>
   <div class="ctl">
     <button class:on={val('hold') >= 0.5} onclick={() => setParam('hold', val('hold') >= 0.5 ? 0 : 1)}>Hold</button>
     <div class="oct">
@@ -103,11 +106,11 @@
     <label><span>Vel {velocity}</span>
       <input type="range" min="1" max="127" bind:value={velocity} />
     </label>
-    <label><span>Mod {Math.round(wheel * 100)}</span>
+    <label class="mw"><span>Mod {Math.round(wheel * 100)}</span>
       <input type="range" min="0" max="1" step="0.01" bind:value={wheel} oninput={() => host.send({ t: 'wheel', v: wheel })} />
     </label>
   </div>
-  <div class="keys" bind:this={el} role="application" aria-label="Teclado"
+  <div class="keys" bind:this={el} bind:clientWidth={width} role="application" aria-label="Teclado"
     onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up}>
     {#each Array(KEYS) as _, i}
       {@const n = base + i}
@@ -134,6 +137,13 @@
   .key { flex: 1 1 0; position: relative; background: #dfe5ec; border-radius: 0 0 8px 8px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; pointer-events: none; overflow: hidden; }
   .key.black { background: #2a323c; border: 1px solid #45505d; }
   .key.down { background: var(--accent); }
+  .compact { flex-direction: column; gap: 6px; padding-top: 6px; }
+  .compact .ctl { width: auto; flex-direction: row; align-items: center; gap: 8px; }
+  .compact .ctl > button { min-width: 64px; }
+  .compact .oct { gap: 6px; }
+  .compact label { flex: 1 1 0; min-width: 0; }
+  .compact label.mw { display: none; }
+  @media (min-width: 700px) { .compact label.mw { display: flex; } }
   .key span { font-size: 11px; font-weight: 700; color: #39424d; }
   .bend { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.25); }
 </style>

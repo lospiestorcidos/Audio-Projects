@@ -2,14 +2,29 @@
 import { AudioHost, type LoadedSample } from '../audio/host';
 import { factorySample } from '../audio/factory';
 import { base64ToBuf, bufToBase64, decodeWav16, downloadBlob, encodeWav } from '../audio/wav';
-import { PARAMS, clampParam, defaultValues, pdef, pidx } from '../shared/params';
+import { MOD_TABLE, PARAMS, clampParam, defaultValues, pdef, pidx } from '../shared/params';
 import { startMidi } from '../midi/midi';
 import { dbDel, dbGet, dbKeys, dbPut } from './db';
 import { FACTORY_PRESETS, type Preset, type PresetFile } from './presets';
 
 export const host = new AudioHost();
 
+/** Interfaz inicial: la guardada; si no hay, la de páginas en pantallas pequeñas (teléfono). */
+function initialLayout(): 'classic' | 'pages' {
+  try {
+    const q = new URLSearchParams(location.search).get('ui');
+    if (q === 'pages' || q === 'classic') return q;
+    const saved = localStorage.getItem('granos.layout');
+    if (saved === 'pages' || saved === 'classic') return saved;
+  } catch { /* sin almacenamiento */ }
+  return Math.min(window.innerWidth, window.innerHeight) < 600 ? 'pages' : 'classic';
+}
+
 export const ui = $state({
+  /** Interfaz: 'classic' (todo a la vista) o 'pages' (8 controles por página). */
+  layout: initialLayout(),
+  /** Página activa de la interfaz de páginas. */
+  epage: 'grain',
   values: Array.from(defaultValues()),
   /** Parámetro tocado por última vez: decide el panel de modulación y el display en modo Auto. */
   selected: 'position',
@@ -53,6 +68,25 @@ export function setParam(id: string, v: number) {
   if (ui.values[i] === v) return;
   ui.values[i] = v;
   host.setParam(i, v);
+}
+
+export function setLayout(l: 'classic' | 'pages') {
+  ui.layout = l;
+  try { localStorage.setItem('granos.layout', l); } catch { /* sin almacenamiento */ }
+}
+
+/** Destinos que tienen panel de modulación, en orden. */
+export const MOD_DESTS = Object.keys(MOD_TABLE);
+// Parámetros secundarios que comparten el panel de su parámetro principal.
+const MOD_ALIAS: Record<string, string> = {
+  lfoDiv: 'lfoRate', lfoAudio: 'lfoRate', tune: 'transpose', pbRange: 'transpose',
+  varPos: 'variation', varSize: 'variation', varPitch: 'variation', varVol: 'variation',
+  scanDist: 'scanSpeed', scanLoop: 'scanSpeed', filterRes: 'filterFreq', filterWidth: 'filterFreq',
+  filterMode: 'filterFreq',
+};
+/** Destino de modulación que corresponde al parámetro seleccionado. */
+export function modDest(): string {
+  return MOD_ALIAS[ui.selected] ?? ui.selected;
 }
 
 export function select(id: string) {

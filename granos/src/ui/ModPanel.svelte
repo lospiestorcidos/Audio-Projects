@@ -1,17 +1,10 @@
 <script lang="ts">
   // Zona 2: modulaciones del parámetro seleccionado. Cada destino admite solo sus fuentes.
   import { MOD_TABLE, pdef, type SourceId } from '../shared/params';
-  import { ui } from '../state/store.svelte';
+  import { modDest } from '../state/store.svelte';
   import Knob from './Knob.svelte';
 
-  // Parámetros secundarios que comparten el panel de su parámetro principal.
-  const ALIAS: Record<string, string> = {
-    lfoDiv: 'lfoRate', lfoAudio: 'lfoRate', tune: 'transpose', pbRange: 'transpose',
-    varPos: 'variation', varSize: 'variation', varPitch: 'variation', varVol: 'variation',
-    scanDist: 'scanSpeed', scanLoop: 'scanSpeed', filterRes: 'filterFreq', filterWidth: 'filterFreq',
-    filterMode: 'filterFreq',
-  };
-  const dest = $derived(ALIAS[ui.selected] ?? ui.selected);
+  const dest = $derived(modDest());
   const sources = $derived(MOD_TABLE[dest] ? (Object.keys(MOD_TABLE[dest]) as SourceId[]) : []);
 </script>
 

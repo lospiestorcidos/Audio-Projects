@@ -5,10 +5,11 @@
   import { FACTORY_PRESETS } from '../state/presets';
   import {
     deletePreset, exportPreset, host, importPreset, loadFactorySample, loadFile, loadPresetByName, loadSavedSample,
-    savePreset, ui,
+    savePreset, setLayout, ui,
   } from '../state/store.svelte';
   import Choice from './Choice.svelte';
 
+  let { compact = false }: { compact?: boolean } = $props();
   let fileInput: HTMLInputElement;
   let presetInput: HTMLInputElement;
   let menu = $state(false);
@@ -39,7 +40,7 @@
   }
 </script>
 
-<header>
+<header class:compact>
   <div class="logo">GRANOS</div>
 
   <select class="preset" aria-label="Preset" value={ui.presetName} onchange={(e) => loadPresetByName(e.currentTarget.value)}>
@@ -60,6 +61,11 @@
         <button onclick={() => { exportPreset(); menu = false; }}>Exportar</button>
         <button onclick={() => { presetInput.click(); menu = false; }}>Importar…</button>
         <button disabled={!isUser} onclick={() => { void deletePreset(ui.presetName); menu = false; }}>Borrar</button>
+        <hr />
+        <button onclick={() => { setLayout(ui.layout === 'pages' ? 'classic' : 'pages'); menu = false; }}>
+          {ui.layout === 'pages' ? 'Interfaz clásica' : 'Interfaz de páginas'}
+        </button>
+        <button onclick={() => { host.send({ t: 'panic' }); menu = false; }}>Pánico</button>
       </div>
     {/if}
   </div>
@@ -77,14 +83,14 @@
     {/if}
   </select>
 
-  <Choice id="mode" label="" />
+  {#if !compact}<Choice id="mode" label="" />{/if}
 
   <div class="grow"></div>
   <div class="meter" class:hot={ui.cpu > 0.6} title="Carga del motor de audio">
     <div><b>{Math.round(ui.cpu * 100)}%</b> CPU</div>
-    <div>{ui.voices} voces · {ui.grains} granos</div>
+    {#if !compact}<div>{ui.voices} voces · {ui.grains} granos</div>{/if}
   </div>
-  <button class="panic" onclick={() => host.send({ t: 'panic' })}>Pánico</button>
+  {#if !compact}<button class="panic" onclick={() => host.send({ t: 'panic' })}>Pánico</button>{/if}
 
   <input bind:this={fileInput} type="file" hidden accept="audio/*,.wav,.aif,.aiff,.mp3,.m4a,.flac,.ogg"
     onchange={(e) => { const f = e.currentTarget.files?.[0]; if (f) void loadFile(f); e.currentTarget.value = ''; }} />
@@ -105,6 +111,11 @@
   .menuwrap { position: relative; }
   .menu { position: absolute; top: 46px; left: 0; z-index: 20; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; width: 190px; }
   .menu button { text-align: left; }
+  .menu hr { width: 100%; border: none; border-top: 1px solid var(--line); margin: 2px 0; }
+  .compact { gap: 6px; padding-left: 6px; padding-right: 6px; }
+  .compact .logo { display: none; }
+  .compact .preset, .compact .sample { width: auto; flex: 1 1 0; }
+  .compact .grow { display: none; }
   header :global(.cell .lab) { display: none; }
   header :global(.seg button) { min-height: 40px; }
 </style>

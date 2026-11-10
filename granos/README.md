@@ -13,6 +13,15 @@ npm test         # tests del motor DSP (se ejecutan en Node, sin navegador)
 npm run bench    # mide la carga del DSP con 8 voces
 ```
 
+## Dos interfaces
+
+- **Clásica**: todos los controles de una sección a la vista (pensada para iPad).
+- **De páginas**: una pantalla con 8 controles y botones de página (Grano, Nota, Variación,
+  Filtro, Env 1, Env 2, LFO 1, LFO 2, Mod, Capture). Se adapta a teléfono, en vertical y horizontal.
+
+Se cambia en el menú **⋯**. En pantallas pequeñas arranca la de páginas; también se puede forzar
+con `?ui=pages` o `?ui=classic` en la dirección.
+
 ## Arquitectura
 
 - `src/shared/params.ts` — esquema único de parámetros y rutas de modulación (lo usan DSP, UI y presets).
