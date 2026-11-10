@@ -5,7 +5,7 @@
   import { FACTORY_PRESETS } from '../state/presets';
   import {
     deletePreset, exportPreset, host, importPreset, loadFactorySample, loadFile, loadPresetByName, loadSavedSample,
-    savePreset, setLayout, ui,
+    cycleTapSpeed, savePreset, setLayout, TAP_SPEEDS, ui,
   } from '../state/store.svelte';
   import Choice from './Choice.svelte';
 
@@ -65,6 +65,8 @@
         <button onclick={() => { setLayout(ui.layout === 'pages' ? 'classic' : 'pages'); menu = false; }}>
           {ui.layout === 'pages' ? 'Interfaz clásica' : 'Interfaz de páginas'}
         </button>
+        <!-- No cierra el menú: se puede pulsar varias veces hasta dar con la velocidad cómoda. -->
+        <button onclick={cycleTapSpeed}>Doble toque: {TAP_SPEEDS.find((t) => t.ms === ui.tapMs)?.label}</button>
         <button onclick={() => { host.send({ t: 'panic' }); menu = false; }}>Pánico</button>
       </div>
     {/if}
@@ -109,7 +111,7 @@
   .meter b { color: var(--text); }
   .meter.hot b { color: var(--hot); }
   .menuwrap { position: relative; }
-  .menu { position: absolute; top: 46px; left: 0; z-index: 20; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; width: 190px; }
+  .menu { position: absolute; top: 46px; left: 0; z-index: 20; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; width: 210px; }
   .menu button { text-align: left; }
   .menu hr { width: 100%; border: none; border-top: 1px solid var(--line); margin: 2px 0; }
   .compact { gap: 6px; padding-left: 6px; padding-right: 6px; }
