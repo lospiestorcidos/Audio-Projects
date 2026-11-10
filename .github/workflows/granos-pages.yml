@@ -1,14 +1,14 @@
-# Publica la PWA de Granos en GitHub Pages.
+# Publica en GitHub Pages las dos apps web: Granos (en la raíz) y Tablas (en /tablas/).
 # Requisito (una sola vez): Settings › Pages › Source = "GitHub Actions".
-name: Granos · publicar PWA
+name: Granos y Tablas · publicar PWA
 
 on:
   push:
     branches: [main]
-    paths: ['granos/**', '.github/workflows/granos-pages.yml']
+    paths: ['granos/**', 'tablas/**', '.github/workflows/granos-pages.yml']
   # En los pull requests solo se prueban los tests y la compilación (no se publica).
   pull_request:
-    paths: ['granos/**', '.github/workflows/granos-pages.yml']
+    paths: ['granos/**', 'tablas/**', '.github/workflows/granos-pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -23,23 +23,37 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: granos
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: granos/package-lock.json
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
+          cache-dependency-path: |
+            granos/package-lock.json
+            tablas/package-lock.json
+      - name: Granos · tests y compilación
+        working-directory: granos
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Tablas · tests y compilación
+        working-directory: tablas
+        run: |
+          npm ci
+          npm run check
+          npm test
+          npm run build
+      - name: Reunir el sitio (Granos en la raíz, Tablas en /tablas/)
+        run: |
+          mkdir -p site/tablas
+          cp -r granos/dist/. site/
+          cp -r tablas/dist/. site/tablas/
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
-          path: granos/dist
+          path: site
 
   # GitHub Pages solo acepta publicaciones desde main.
   deploy:

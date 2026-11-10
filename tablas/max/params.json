@@ -1,0 +1,686 @@
+[
+ {
+  "name": "Osc 1",
+  "params": [
+   {
+    "id": "o1Table",
+    "name": "O1 Table",
+    "options": null,
+    "range": [
+     0,
+     63
+    ],
+    "initial": 0
+   },
+   {
+    "id": "o1Pos",
+    "name": "O1 Position",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "o1Fx",
+    "name": "O1 FX Type",
+    "options": [
+     "Off",
+     "FM",
+     "Classic",
+     "Modern"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "o1Fx1",
+    "name": "O1 FX 1",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "o1Fx2",
+    "name": "O1 FX 2",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "o1Semi",
+    "name": "O1 Semi",
+    "options": null,
+    "range": [
+     -24,
+     24
+    ],
+    "initial": 0
+   },
+   {
+    "id": "o1Fine",
+    "name": "O1 Fine",
+    "options": null,
+    "range": null,
+    "initial": 50
+   },
+   {
+    "id": "o1Level",
+    "name": "O1 Level",
+    "options": null,
+    "range": null,
+    "initial": 80
+   }
+  ]
+ },
+ {
+  "name": "Osc 2",
+  "params": [
+   {
+    "id": "o2Table",
+    "name": "O2 Table",
+    "options": null,
+    "range": [
+     0,
+     63
+    ],
+    "initial": 3
+   },
+   {
+    "id": "o2Pos",
+    "name": "O2 Position",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "o2Fx",
+    "name": "O2 FX Type",
+    "options": [
+     "Off",
+     "FM",
+     "Classic",
+     "Modern"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "o2Fx1",
+    "name": "O2 FX 1",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "o2Fx2",
+    "name": "O2 FX 2",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "o2Semi",
+    "name": "O2 Semi",
+    "options": null,
+    "range": [
+     -24,
+     24
+    ],
+    "initial": 0
+   },
+   {
+    "id": "o2Fine",
+    "name": "O2 Fine",
+    "options": null,
+    "range": null,
+    "initial": 50
+   },
+   {
+    "id": "o2Level",
+    "name": "O2 Level",
+    "options": null,
+    "range": null,
+    "initial": 0
+   }
+  ]
+ },
+ {
+  "name": "Mezcla",
+  "params": [
+   {
+    "id": "subLevel",
+    "name": "Sub Level",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "subOct",
+    "name": "Sub Octave",
+    "options": [
+     "-2",
+     "-1",
+     "0"
+    ],
+    "range": null,
+    "initial": 1
+   },
+   {
+    "id": "subTone",
+    "name": "Sub Tone",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "uniMode",
+    "name": "Unison Mode",
+    "options": [
+     "Clásico",
+     "Posición",
+     "Aleatorio"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "uniVoices",
+    "name": "Unison Voices",
+    "options": null,
+    "range": [
+     1,
+     8
+    ],
+    "initial": 1
+   },
+   {
+    "id": "uniAmt",
+    "name": "Unison Amount",
+    "options": null,
+    "range": null,
+    "initial": 30
+   },
+   {
+    "id": "oscSpread",
+    "name": "Osc Stereo",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "volume",
+    "name": "Volume",
+    "options": null,
+    "range": null,
+    "initial": 75
+   }
+  ]
+ },
+ {
+  "name": "Filtro",
+  "params": [
+   {
+    "id": "filterOn",
+    "name": "Filter On",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "range": null,
+    "initial": 1
+   },
+   {
+    "id": "filterMode",
+    "name": "Filter Type",
+    "options": [
+     "LP 24",
+     "LP 12",
+     "LP→HP",
+     "LP→Notch",
+     "Notch",
+     "Notch ×2",
+     "HP→Notch",
+     "HP 12",
+     "HP 24"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "filterFreq",
+    "name": "Filter Freq",
+    "options": null,
+    "range": null,
+    "initial": 100
+   },
+   {
+    "id": "filterRes",
+    "name": "Filter Reso",
+    "options": null,
+    "range": null,
+    "initial": 15
+   },
+   {
+    "id": "filterWidth",
+    "name": "Filter Width",
+    "options": null,
+    "range": null,
+    "initial": 37.5
+   },
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "Env 1",
+  "params": [
+   {
+    "id": "e1A",
+    "name": "E1 Attack",
+    "options": null,
+    "range": null,
+    "initial": 16.25
+   },
+   {
+    "id": "e1D",
+    "name": "E1 Decay",
+    "options": null,
+    "range": null,
+    "initial": 56.49
+   },
+   {
+    "id": "e1S",
+    "name": "E1 Sustain",
+    "options": null,
+    "range": null,
+    "initial": 100
+   },
+   {
+    "id": "e1R",
+    "name": "E1 Release",
+    "options": null,
+    "range": null,
+    "initial": 51.84
+   },
+   {
+    "id": "e1Key",
+    "name": "E1 Key",
+    "options": null,
+    "range": null,
+    "initial": 50
+   },
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "Env 2",
+  "params": [
+   {
+    "id": "e2A",
+    "name": "E2 Attack",
+    "options": null,
+    "range": null,
+    "initial": 62.75
+   },
+   {
+    "id": "e2D",
+    "name": "E2 Decay",
+    "options": null,
+    "range": null,
+    "initial": 62.79
+   },
+   {
+    "id": "e2S",
+    "name": "E2 Sustain",
+    "options": null,
+    "range": null,
+    "initial": 50
+   },
+   {
+    "id": "e2R",
+    "name": "E2 Release",
+    "options": null,
+    "range": null,
+    "initial": 56.49
+   },
+   {
+    "id": "e2Key",
+    "name": "E2 Key",
+    "options": null,
+    "range": null,
+    "initial": 50
+   },
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "Env 3",
+  "params": [
+   {
+    "id": "e3A",
+    "name": "E3 Attack",
+    "options": null,
+    "range": null,
+    "initial": 62.75
+   },
+   {
+    "id": "e3D",
+    "name": "E3 Decay",
+    "options": null,
+    "range": null,
+    "initial": 62.79
+   },
+   {
+    "id": "e3S",
+    "name": "E3 Sustain",
+    "options": null,
+    "range": null,
+    "initial": 50
+   },
+   {
+    "id": "e3R",
+    "name": "E3 Release",
+    "options": null,
+    "range": null,
+    "initial": 56.49
+   },
+   {
+    "id": "e3Key",
+    "name": "E3 Key",
+    "options": null,
+    "range": null,
+    "initial": 50
+   },
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "LFO 1",
+  "params": [
+   {
+    "id": "lfo1Mode",
+    "name": "L1 Mode",
+    "options": [
+     "Libre",
+     "Sync",
+     "Audio"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "lfo1Rate",
+    "name": "L1 Rate",
+    "options": null,
+    "range": null,
+    "initial": 60.59
+   },
+   {
+    "id": "lfo1Shape",
+    "name": "L1 Shape",
+    "options": [
+     "Sine",
+     "Triangle",
+     "Up",
+     "Down",
+     "Rect",
+     "S&H",
+     "Rand",
+     "Move"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "lfo1Amount",
+    "name": "L1 Amount",
+    "options": null,
+    "range": null,
+    "initial": 100
+   },
+   {
+    "id": "lfo1Stereo",
+    "name": "L1 Stereo",
+    "options": [
+     "0°",
+     "90°",
+     "180°"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "lfo1Quant",
+    "name": "L1 Quant",
+    "options": null,
+    "range": [
+     0,
+     16
+    ],
+    "initial": 0
+   },
+   {
+    "id": "lfo1Phase",
+    "name": "L1 Phase",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "lfo1RandPhase",
+    "name": "L1 Rnd Phase",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "range": null,
+    "initial": 0
+   }
+  ]
+ },
+ {
+  "name": "LFO 2",
+  "params": [
+   {
+    "id": "lfo2Mode",
+    "name": "L2 Mode",
+    "options": [
+     "Libre",
+     "Sync",
+     "Audio"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "lfo2Rate",
+    "name": "L2 Rate",
+    "options": null,
+    "range": null,
+    "initial": 39.41
+   },
+   {
+    "id": "lfo2Shape",
+    "name": "L2 Shape",
+    "options": [
+     "Sine",
+     "Triangle",
+     "Up",
+     "Down",
+     "Rect",
+     "S&H",
+     "Rand",
+     "Move"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "lfo2Amount",
+    "name": "L2 Amount",
+    "options": null,
+    "range": null,
+    "initial": 100
+   },
+   {
+    "id": "lfo2Stereo",
+    "name": "L2 Stereo",
+    "options": [
+     "0°",
+     "90°",
+     "180°"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "lfo2Quant",
+    "name": "L2 Quant",
+    "options": null,
+    "range": [
+     0,
+     16
+    ],
+    "initial": 0
+   },
+   {
+    "id": "lfo2Phase",
+    "name": "L2 Phase",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "lfo2RandPhase",
+    "name": "L2 Rnd Phase",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "range": null,
+    "initial": 0
+   }
+  ]
+ },
+ {
+  "name": "Nota",
+  "params": [
+   {
+    "id": "transpose",
+    "name": "Transpose",
+    "options": null,
+    "range": [
+     -48,
+     48
+    ],
+    "initial": 0
+   },
+   {
+    "id": "pbRange",
+    "name": "PB Range",
+    "options": null,
+    "range": [
+     0,
+     48
+    ],
+    "initial": 2
+   },
+   {
+    "id": "mono",
+    "name": "Mono",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "glide",
+    "name": "Glide",
+    "options": null,
+    "range": null,
+    "initial": 0
+   },
+   {
+    "id": "bpm",
+    "name": "BPM",
+    "options": null,
+    "range": [
+     40,
+     240
+    ],
+    "initial": 120
+   },
+   {
+    "id": "lfoModWheel",
+    "name": "L1 ModWheel",
+    "options": [
+     "Off",
+     "On"
+    ],
+    "range": null,
+    "initial": 0
+   },
+   null,
+   null
+  ]
+ },
+ {
+  "name": "LFO Sync",
+  "params": [
+   {
+    "id": "lfo1Div",
+    "name": "L1 Sync",
+    "options": [
+     "1/16",
+     "1/8",
+     "1/4",
+     "1/2",
+     "1 compás",
+     "2 compases"
+    ],
+    "range": null,
+    "initial": 2
+   },
+   {
+    "id": "lfo1Audio",
+    "name": "L1 Audio Rate",
+    "options": null,
+    "range": null,
+    "initial": 46.21
+   },
+   {
+    "id": "lfo2Div",
+    "name": "L2 Sync",
+    "options": [
+     "1/16",
+     "1/8",
+     "1/4",
+     "1/2",
+     "1 compás",
+     "2 compases"
+    ],
+    "range": null,
+    "initial": 2
+   },
+   {
+    "id": "lfo2Audio",
+    "name": "L2 Audio Rate",
+    "options": null,
+    "range": null,
+    "initial": 46.21
+   },
+   null,
+   null,
+   null,
+   null
+  ]
+ }
+]
