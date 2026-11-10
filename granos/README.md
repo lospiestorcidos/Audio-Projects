@@ -22,6 +22,16 @@ npm run bench    # mide la carga del DSP con 8 voces
 Se cambia en el menú **⋯**. En pantallas pequeñas arranca la de páginas; también se puede forzar
 con `?ui=pages` o `?ui=classic` en la dirección.
 
+## Controlador MIDI físico
+
+En el menú **⋯ › Configurar controlador MIDI…** la app aprende el controlador: se mueve cada uno
+de los 8 knobs y se pulsa un botón por página. Después, el knob *n* mueve el control *n* de la
+página activa y los botones cambian de página; los pads siguen tocando notas. La configuración se
+guarda en el dispositivo. Con potenciómetros con tope, «Knobs MIDI: sin saltos» hace que el knob
+espere a alcanzar el valor antes de moverlo.
+
+Requiere MIDI: Chrome o Edge en el ordenador, o la app nativa en iPad (Safari no tiene Web MIDI).
+
 ## Arquitectura
 
 - `src/shared/params.ts` — esquema único de parámetros y rutas de modulación (lo usan DSP, UI y presets).
