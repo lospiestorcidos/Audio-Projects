@@ -12,9 +12,11 @@ import os
 import struct
 import sys
 
-URL = sys.argv[1] if len(sys.argv) > 1 else "https://lospiestorcidos.github.io/Recent-Projects/?ui=pages"
+URL = sys.argv[1] if len(sys.argv) > 1 else "https://lospiestorcidos.github.io/Recent-Projects/?ui=pages&host=max"
 HERE = os.path.dirname(os.path.abspath(__file__))
 UI_W, UI_H = 1000.0, 640.0  # tamaño de la ventana flotante con la interfaz
+# Bancos de parámetros (los genera el test tests/maxparams.test.ts a partir del esquema de la app).
+BANKS = json.load(open(os.path.join(HERE, "params.json"), encoding="utf-8"))
 
 
 def box(oid, maxclass, rect, text=None, nin=1, nout=1, outtypes=None, **extra):
@@ -72,14 +74,68 @@ def ui_subpatcher():
             url=URL, rendermode=0, presentation=1, presentation_rect=[0.0, 0.0, UI_W, UI_H]),
         box("ui-outl", "outlet", [30.0, 730.0, 30.0, 30.0], nin=1, nout=0, comment="Audio izquierda"),
         box("ui-outr", "outlet", [80.0, 730.0, 30.0, 30.0], nin=1, nout=0, comment="Audio derecha"),
+        box("ui-outm", "outlet", [130.0, 730.0, 30.0, 30.0], nin=1, nout=0, comment="Mensajes de la página"),
     ]
     lines = [
         line("ui-in", 0, "ui-web", 0),
         line("ui-web", 0, "ui-outl", 0),
         line("ui-web", 1, "ui-outr", 0),
+        line("ui-web", 2, "ui-outm", 0),
     ]
     return patcher(boxes, lines, [80.0, 80.0, UI_W, UI_H],
                    toolbarvisible=0, statusbarvisible=0, enablehscroll=0, enablevscroll=0)
+
+
+def add_parameters(boxes, lines):
+    """Un live.dial por parámetro (ocultos: solo existen para Live, la automatización y los
+    controladores como la APC64) y la definición de los bancos de 8.
+
+    Flujo:  Live mueve un dial  → "p <id> <valor>" → página.
+            La página cambia algo → "<id> <valor>" → [route] → "set <valor>" → dial (sin eco).
+            La página arranca     → "ready" → todos los diales envían su valor → "synced".
+    """
+    flat = [p for b in BANKS for p in b["params"] if p]
+    ids = [p["id"] for p in flat]
+    # Mensajes que salen de la página: "ready" y uno por parámetro.
+    boxes.append(box("obj-route", "newobj", [320.0, 300.0, 700.0, 22.0], text="route ready " + " ".join(ids),
+                     nin=1, nout=len(ids) + 2))
+    boxes.append(box("obj-rdy", "newobj", [320.0, 340.0, 40.0, 22.0], text="t b b", nin=1, nout=2,
+                     outtypes=["bang", "bang"]))
+    boxes.append(box("obj-synced", "message", [320.0, 380.0, 50.0, 22.0], text="synced", nin=2, nout=1))
+    lines.append(line("obj-ui", 2, "obj-route", 0))
+    lines.append(line("obj-route", 0, "obj-rdy", 0))
+    lines.append(line("obj-rdy", 0, "obj-synced", 0))  # la salida izquierda se dispara la última
+    lines.append(line("obj-synced", 0, "obj-ui", 0))
+
+    registry = {}
+    for k, p in enumerate(flat):
+        pid, name = p["id"], p["name"]
+        x, y = 320.0 + (k % 8) * 95.0, 430.0 + (k // 8) * 110.0
+        valueof = {
+            "parameter_longname": name, "parameter_shortname": name,
+            "parameter_initial_enable": 1, "parameter_initial": [p["initial"]],
+        }
+        if p["options"]:
+            valueof.update({"parameter_type": 2, "parameter_enum": p["options"], "parameter_mmax": len(p["options"]) - 1})
+        else:  # continuo: recorrido del control en porcentaje
+            valueof.update({"parameter_type": 0, "parameter_mmin": 0.0, "parameter_mmax": 100.0, "parameter_unitstyle": 5})
+        boxes.append(box(f"obj-d-{pid}", "live.dial", [x, y + 26.0, 44.0, 48.0], nin=1, nout=2, outtypes=["", "float"],
+                         parameter_enable=1, varname=f"granos_{pid}", saved_attribute_attributes={"valueof": valueof}))
+        boxes.append(box(f"obj-s-{pid}", "newobj", [x, y, 80.0, 22.0], text="prepend set", nin=1, nout=1))
+        boxes.append(box(f"obj-p-{pid}", "newobj", [x, y + 80.0, 90.0, 22.0], text=f"prepend p {pid}", nin=1, nout=1))
+        lines.append(line("obj-route", k + 1, f"obj-s-{pid}", 0))
+        lines.append(line(f"obj-s-{pid}", 0, f"obj-d-{pid}", 0))
+        lines.append(line(f"obj-d-{pid}", 0, f"obj-p-{pid}", 0))
+        lines.append(line(f"obj-p-{pid}", 0, "obj-ui", 0))
+        lines.append(line("obj-rdy", 1, f"obj-d-{pid}", 0))  # "ready": el dial vuelve a enviar su valor
+        registry[f"obj-d-{pid}"] = [name, name, 0]
+
+    registry["parameterbanks"] = {
+        str(i): {"index": i, "name": b["name"], "parameters": [(p["name"] if p else "-") for p in b["params"]]}
+        for i, b in enumerate(BANKS)
+    }
+    registry["inherited_shortname"] = 1
+    return registry
 
 
 def main_patcher():
@@ -98,8 +154,8 @@ def main_patcher():
         # MIDI de la pista, byte a byte, hacia la página.
         box("obj-midi", "newobj", [220.0, 110.0, 50.0, 22.0], text="midiin", nin=1, nout=1, outtypes=["int"]),
         box("obj-pre", "newobj", [220.0, 160.0, 70.0, 22.0], text="prepend b", nin=1, nout=1),
-        box("obj-ui", "newobj", [120.0, 240.0, 80.0, 22.0], text="p Granos", nin=1, nout=2,
-            outtypes=["signal", "signal"], patcher=ui_subpatcher()),
+        box("obj-ui", "newobj", [120.0, 240.0, 80.0, 22.0], text="p Granos", nin=1, nout=3,
+            outtypes=["signal", "signal", ""], patcher=ui_subpatcher()),
         box("obj-out", "newobj", [120.0, 300.0, 80.0, 22.0], text="plugout~ 1 2", nin=2, nout=2,
             outtypes=["signal", "signal"]),
     ]
@@ -112,8 +168,10 @@ def main_patcher():
         line("obj-ui", 0, "obj-out", 0),
         line("obj-ui", 1, "obj-out", 1),
     ]
+    params = add_parameters(boxes, lines)
     return patcher(
-        boxes, lines, [60.0, 100.0, 520.0, 400.0],
+        boxes, lines, [60.0, 100.0, 1100.0, 760.0],
+        parameters=params,
         openrect=[0.0, 0.0, 200.0, 169.0],
         title="Granos",
         description="Sintetizador granular Granos dentro de una pista de Live (web en jweb~).",

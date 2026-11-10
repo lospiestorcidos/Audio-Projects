@@ -7,6 +7,10 @@ export interface MidiSink {
   hold(on: boolean): void;
   /** Controlador físico: si devuelve true, el mensaje era de un knob o botón asignado y no sigue. */
   control?(status: number, d1: number, d2: number): boolean;
+  /** Max for Live: Live ha movido un parámetro (id, valor del live.dial). */
+  maxParam?(id: string, value: number): void;
+  /** Max for Live: Live ya ha enviado todos sus valores; desde ahora la app puede escribir en Live. */
+  maxSynced?(): void;
 }
 
 /**

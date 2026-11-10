@@ -17,7 +17,8 @@ export type MidiStatus = { kind: 'native' | 'web' | 'max' | 'none'; sources: str
 
 /** API que Max inyecta en las páginas cargadas dentro de [jweb~] (dispositivo de Max for Live). */
 interface MaxApi {
-  bindInlet(name: string, fn: (...args: number[]) => void): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bindInlet(name: string, fn: (...args: any[]) => void): void;
   outlet(...args: unknown[]): void;
 }
 const maxApi = (): MaxApi | undefined => {
@@ -25,7 +26,16 @@ const maxApi = (): MaxApi | undefined => {
   return m && typeof m.bindInlet === 'function' ? m : undefined;
 };
 /** true si la app corre dentro de un dispositivo de Max for Live. */
-export const isMaxHost = (): boolean => !!maxApi();
+/** La dirección lleva ?host=max cuando la carga el dispositivo de Max for Live. */
+const maxRequested = (): boolean => {
+  try { return new URLSearchParams(location.search).get('host') === 'max'; } catch { return false; }
+};
+export const isMaxHost = (): boolean => maxRequested() || !!maxApi();
+
+/** Envía un mensaje a Max por la salida de [jweb~] (no hace nada fuera de Max). */
+export function maxSend(...args: unknown[]) {
+  maxApi()?.outlet(...args);
+}
 
 export const isNative = (): boolean =>
   !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
@@ -36,19 +46,26 @@ export async function startMidi(sink: MidiSink, onStatus: (s: MidiStatus) => voi
   const parser = new MidiParser(sink);
 
   // Dentro de Max for Live: el MIDI de la pista llega byte a byte con el mensaje "b <byte>".
+  // No se usa Web MIDI: sonarían las notas de todos los controladores, no solo las de la pista.
   const bindMax = (): boolean => {
     const max = maxApi();
     if (!max) return false;
     const stream = new MidiByteStream(parser);
-    max.bindInlet('b', (byte) => stream.push(byte));
+    max.bindInlet('b', (byte: number) => stream.push(byte));
+    max.bindInlet('p', (id: string, value: number) => sink.maxParam?.(String(id), Number(value)));
+    max.bindInlet('synced', () => sink.maxSynced?.());
     onStatus({ kind: 'max', sources: ['Pista de Ableton Live'] });
-    max.outlet('ready', 1);
+    max.outlet('ready', 1); // Max responde con todos sus parámetros y luego "synced"
     return true;
   };
   if (bindMax()) return;
-  // Por si Max inyecta su API después de cargar la página.
-  let tries = 0;
-  const retry = setInterval(() => { if (bindMax() || ++tries >= 5) clearInterval(retry); }, 1000);
+  if (maxRequested()) {
+    // Max puede inyectar su API un poco después de cargar la página: se reintenta durante 20 s.
+    onStatus({ kind: 'max', sources: ['Pista de Ableton Live'] });
+    let tries = 0;
+    const retry = setInterval(() => { if (bindMax() || ++tries >= 100) clearInterval(retry); }, 200);
+    return;
+  }
 
   if (isNative()) {
     native = registerPlugin<GranosMidiPlugin>('GranosMidi');
