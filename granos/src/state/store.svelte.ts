@@ -226,8 +226,9 @@ export async function loadFile(file: File) {
     const s = await host.decode(await file.arrayBuffer(), file.name.replace(/\.[^.]+$/, ''));
     loadUserSample(s);
     toast(`Sample cargado: ${s.name}`);
-  } catch {
-    toast('No se pudo leer ese archivo de audio');
+  } catch (e) {
+    const why = e instanceof Error && e.message ? ` (${e.message})` : '';
+    toast(`No se pudo leer «${file.name}»${why}`);
   }
 }
 
