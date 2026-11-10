@@ -16,6 +16,8 @@
   let drag: { pid: number; y: number; n: number; t: number; moved: boolean } | null = null;
   let active = $state(false);
   let lastTap = 0;
+  /** Desplazamiento (px) a partir del cual el gesto es un arrastre y no un toque. */
+  const TAP_SLOP = 12;
 
   function down(e: PointerEvent) {
     try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* puntero ya liberado */ }
@@ -26,17 +28,19 @@
   function move(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pid) return;
     const dy = drag.y - e.clientY;
-    if (Math.abs(dy) > 6) drag.moved = true;
+    if (Math.abs(dy) > TAP_SLOP) drag.moved = true;
     if (drag.moved) setParam(id, fromNorm(d, drag.n + dy / (stepped ? 120 : 200)));
   }
   function up(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pid) return;
     const now = performance.now();
-    const tap = !drag.moved && now - drag.t < 350;
+    // Un toque puede ser lento: vale mientras el dedo no se haya desplazado.
+    const tap = !drag.moved && now - drag.t < Math.max(600, ui.tapMs);
+    const downAt = drag.t;
     drag = null; active = false;
     if (!tap) return;
     if (stepped) setParam(id, v >= d.max ? d.min : v + 1); // toque: opción siguiente
-    else if (now - lastTap < 400) { setParam(id, d.def); lastTap = 0; return; }
+    else if (downAt - lastTap < ui.tapMs) { setParam(id, d.def); lastTap = 0; return; }
     lastTap = now;
   }
 

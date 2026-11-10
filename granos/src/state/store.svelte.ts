@@ -20,7 +20,20 @@ function initialLayout(): 'classic' | 'pages' {
   return Math.min(window.innerWidth, window.innerHeight) < 600 ? 'pages' : 'classic';
 }
 
+/** Tiempo máximo (ms) entre los dos toques de un doble toque. Por defecto, lento. */
+export const TAP_SPEEDS = [
+  { ms: 400, label: 'rápido' }, { ms: 1000, label: 'lento' }, { ms: 2000, label: 'muy lento' },
+];
+function initialTapMs(): number {
+  try {
+    const v = Number(localStorage.getItem('granos.tapMs'));
+    if (TAP_SPEEDS.some((t) => t.ms === v)) return v;
+  } catch { /* sin almacenamiento */ }
+  return 1000;
+}
+
 export const ui = $state({
+  tapMs: initialTapMs(),
   /** Interfaz: 'classic' (todo a la vista) o 'pages' (8 controles por página). */
   layout: initialLayout(),
   /** Página activa de la interfaz de páginas. */
@@ -73,6 +86,13 @@ export function setParam(id: string, v: number) {
 export function setLayout(l: 'classic' | 'pages') {
   ui.layout = l;
   try { localStorage.setItem('granos.layout', l); } catch { /* sin almacenamiento */ }
+}
+
+/** Pasa a la siguiente velocidad de doble toque y la recuerda. */
+export function cycleTapSpeed() {
+  const i = TAP_SPEEDS.findIndex((t) => t.ms === ui.tapMs);
+  ui.tapMs = TAP_SPEEDS[(i + 1) % TAP_SPEEDS.length].ms;
+  try { localStorage.setItem('granos.tapMs', String(ui.tapMs)); } catch { /* sin almacenamiento */ }
 }
 
 /** Destinos que tienen panel de modulación, en orden. */

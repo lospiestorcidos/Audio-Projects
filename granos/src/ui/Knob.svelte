@@ -12,26 +12,35 @@
   const bipolar = $derived(d.min < 0 && d.curve !== 'log');
   const selected = $derived(!d.dest && ui.selected === id);
 
-  let drag: { pid: number; y: number; n: number } | null = null;
+  let drag: { pid: number; y: number; n: number; t: number; moved: boolean } | null = null;
   let active = $state(false);
   let lastTap = 0;
+  /** Desplazamiento (px) a partir del cual el gesto es un arrastre y no un toque. */
+  const TAP_SLOP = 12;
 
   function down(e: PointerEvent) {
     try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* puntero ya liberado */ }
     if (!d.dest) select(id);
-    const t = performance.now();
-    if (t - lastTap < 320) { setParam(id, d.def); lastTap = 0; return; }
-    lastTap = t;
-    drag = { pid: e.pointerId, y: e.clientY, n };
+    drag = { pid: e.pointerId, y: e.clientY, n, t: performance.now(), moved: false };
     active = true;
   }
   function move(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pid) return;
+    const dy = drag.y - e.clientY;
+    if (Math.abs(dy) > TAP_SLOP) drag.moved = true;
     // 220 px de recorrido = rango completo.
-    setParam(id, fromNorm(d, drag.n + (drag.y - e.clientY) / 220));
+    if (drag.moved) setParam(id, fromNorm(d, drag.n + dy / 220));
   }
   function up(e: PointerEvent) {
-    if (drag && e.pointerId === drag.pid) { drag = null; active = false; }
+    if (!drag || e.pointerId !== drag.pid) return;
+    const now = performance.now();
+    // Solo cuentan como toque los gestos sin arrastre; el doble toque usa la velocidad elegida en el menú.
+    const tap = !drag.moved && now - drag.t < Math.max(600, ui.tapMs);
+    const downAt = drag.t;
+    drag = null; active = false;
+    if (!tap) return;
+    if (downAt - lastTap < ui.tapMs) { setParam(id, d.def); lastTap = 0; return; }
+    lastTap = now;
   }
 
   // Arco de 270° (de -135° a +135°, 0° = arriba).
