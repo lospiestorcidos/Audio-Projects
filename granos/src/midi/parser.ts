@@ -5,6 +5,8 @@ export interface MidiSink {
   send(m: EngineMsg): void;
   /** Pedal de sustain (CC 64) → Hold. */
   hold(on: boolean): void;
+  /** Controlador físico: si devuelve true, el mensaje era de un knob o botón asignado y no sigue. */
+  control?(status: number, d1: number, d2: number): boolean;
 }
 
 /**
@@ -31,6 +33,7 @@ export class MidiParser {
   }
 
   message(status: number, d1: number, d2: number) {
+    if (this.sink.control?.(status, d1, d2)) return;
     const type = status & 0xf0, ch = status & 0x0f;
     switch (type) {
       case 0x90:

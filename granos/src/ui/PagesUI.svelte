@@ -2,61 +2,16 @@
   // Interfaz de páginas: una sola pantalla con 8 controles y botones para cambiar de página.
   // Las posiciones de los controles son fijas en cada página; los que no aplican al modo actual
   // se atenúan en lugar de desaparecer.
-  import { MOD_TABLE, pdef, type SourceId } from '../shared/params';
-  import { MOD_DESTS, modDest, select, ui, val } from '../state/store.svelte';
+  import { pdef } from '../shared/params';
+  import { PAGES, pageModDest, slotsFor } from '../state/pages.svelte';
+  import { MOD_DESTS, select, ui } from '../state/store.svelte';
   import Display from './Display.svelte';
   import ECapture from './ECapture.svelte';
   import Enc from './Enc.svelte';
   import Keyboard from './Keyboard.svelte';
   import TopBar from './TopBar.svelte';
 
-  type Slot = { id: string; label?: string; off?: boolean } | null;
-  const S = (id: string, label?: string, off = false): Slot => ({ id, label, off });
-
-  const mode = $derived(Math.round(val('mode')));
-  const lfoMode = $derived(Math.round(val('lfoMode')));
-  const dest = $derived(MOD_TABLE[modDest()] ? modDest() : 'position');
-
-  const PAGES = [
-    { id: 'grain', title: 'Grano' }, { id: 'note', title: 'Nota' }, { id: 'var', title: 'Variación' },
-    { id: 'filter', title: 'Filtro' }, { id: 'env1', title: 'Env 1' }, { id: 'env2', title: 'Env 2' },
-    { id: 'lfo1', title: 'LFO 1' }, { id: 'lfo2', title: 'LFO 2' }, { id: 'mod', title: 'Mod' },
-    { id: 'capture', title: 'Capture' },
-  ];
-
-  function slotsFor(page: string): Slot[] {
-    switch (page) {
-      case 'grain': return [
-        S('mode'), S('position'), S('size', 'Size'), S('shape', undefined, mode === 2),
-        S('reverse', undefined, mode !== 1), S('density', undefined, mode !== 2), S('spread'), S('volume'),
-      ];
-      case 'note': return [
-        S('transpose'), S('tune'), S('pbRange', 'PB Range'), S('mono'),
-        S('glide', undefined, val('mono') < 0.5), S('scanSpeed', 'Scan'), S('scanDist', 'Scan Dist'), S('scanLoop', 'Scan Loop'),
-      ];
-      case 'var': return [
-        S('variation', 'Amount'), S('varPos', 'Position'), S('varSize', 'Size'), S('varPitch', 'Transp', mode !== 2),
-        S('varVol', 'Volume'), null, null, null,
-      ];
-      case 'filter': return [
-        S('filterOn', 'Filtro'), S('filterMode', 'Tipo'), S('filterFreq', 'Freq'), S('filterRes', 'Reso'),
-        S('filterWidth'), null, null, null,
-      ];
-      case 'env1': return [S('e1A'), S('e1D'), S('e1S'), S('e1R'), S('e1Key'), null, null, null];
-      case 'env2': return [S('e2A'), S('e2D'), S('e2S'), S('e2R'), S('e2Key'), null, null, null];
-      case 'lfo1': return [
-        S('lfoMode'), S(['lfoRate', 'lfoDiv', 'lfoAudio'][lfoMode], 'Rate'), S('lfoShape'), S('lfoAmount'),
-        S('lfoStereo'), S('lfoQuant'), S('lfoPhase'), S('lfoRandPhase', 'Fase aleat.'),
-      ];
-      case 'lfo2': return [S('bpm', undefined, lfoMode !== 1), S('lfoModWheel', 'Mod Wheel'), null, null, null, null, null, null];
-      case 'mod': {
-        const out: Slot[] = (Object.keys(MOD_TABLE[dest]) as SourceId[]).map((s) => S(`${dest}>${s}`));
-        while (out.length < 8) out.push(null);
-        return out;
-      }
-      default: return [];
-    }
-  }
+  const dest = $derived(pageModDest());
   const slots = $derived(slotsFor(ui.epage));
 
   /** En la página Mod: pasa al destino anterior o siguiente. */

@@ -9,6 +9,9 @@ import { FACTORY_PRESETS, type Preset, type PresetFile } from './presets';
 
 export const host = new AudioHost();
 
+/** Gancho que instala state/midimap.svelte.ts para interceptar knobs y botones del controlador. */
+export const midiHooks = { control: (_status: number, _d1: number, _d2: number): boolean => false };
+
 /** Interfaz inicial: la guardada; si no hay, la de páginas en pantallas pequeñas (teléfono). */
 function initialLayout(): 'classic' | 'pages' {
   try {
@@ -312,7 +315,9 @@ export async function importPreset(file: File) {
 export async function boot() {
   void host.ensure();
   void startMidi(
-    { send: (m) => { void host.resume(); host.send(m); }, hold: (on) => setParam('hold', on ? 1 : 0) },
+    { send: (m) => { void host.resume(); host.send(m); }, hold: (on) => setParam('hold', on ? 1 : 0),
+      control: (st, d1, d2) => midiHooks.control(st, d1, d2),
+    },
     (st) => { ui.midiKind = st.kind; ui.midiSources = st.sources; },
   );
   await applyPreset(FACTORY_PRESETS[0]);

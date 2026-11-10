@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { boot, host, ui } from '../state/store.svelte';
   import ClassicUI from './ClassicUI.svelte';
+  import MidiLearn from './MidiLearn.svelte';
   import PagesUI from './PagesUI.svelte';
 
   onMount(() => {
@@ -20,6 +21,7 @@
 {#if ui.audio !== 'running'}
   <div class="unlock">Toca la pantalla para activar el audio</div>
 {/if}
+<MidiLearn />
 {#if ui.toast}<div class="toast">{ui.toast}</div>{/if}
 
 <style>
