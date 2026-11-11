@@ -60,7 +60,7 @@
   /* Vertical (teléfono de pie): todo en una columna. */
   .pg {
     height: 100%; display: grid; grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(90px, 22%) auto auto minmax(110px, 1fr);
+    grid-template-rows: auto minmax(90px, 1fr) auto auto 66px;
     grid-template-areas: 'top' 'disp' 'work' 'nav' 'kbd';
     padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
   }
@@ -79,13 +79,17 @@
   .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, 104px); gap: 6px; }
   .empty { border: 2px dashed var(--line); border-radius: 12px; opacity: 0.3; }
 
-  nav button { min-height: 42px; padding: 0 2px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  nav button { min-height: 56px; padding: 0 2px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Teclado compacto: franja baja, con sus controles reducidos. */
+  .kbd :global(.kb) { height: 100%; padding: 4px 6px; gap: 6px; }
+  .kbd :global(.compact .ctl > button), .kbd :global(.compact .oct button) { min-height: 26px; }
+  .kbd :global(.compact label) { font-size: 11px; }
 
   /* Horizontal (teléfono tumbado o iPad): display a la izquierda, los 8 controles a la derecha. */
   @media (orientation: landscape) {
     .pg {
       grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
-      grid-template-rows: auto minmax(0, 1fr) auto minmax(84px, 28%);
+      grid-template-rows: auto minmax(0, 1fr) auto 66px;
       grid-template-areas: 'top top' 'disp work' 'nav nav' 'kbd kbd';
     }
     .work { padding: 0 6px 6px 0; }
@@ -94,7 +98,7 @@
     .title { height: 30px; }
   }
   @media (orientation: landscape) and (max-height: 480px) {
-    nav button { min-height: 34px; font-size: 12px; }
+    nav button { min-height: 46px; font-size: 12px; }
     .title { height: 24px; }
   }
 </style>
