@@ -5,7 +5,7 @@ export const C = {
   grid: '#232a32',
   dim: '#5b6672',
   text: '#e8edf2',
-  accent: '#ffb000', // ámbar: oscilador 1 / curva principal
+  accent: '#4ade80', // verde: oscilador 1 / curva principal
   accent2: '#35d0ff', // cian: oscilador 2 / segunda curva
   accent3: '#c79bff', // violeta: tercera curva
   wave: '#56616d',
