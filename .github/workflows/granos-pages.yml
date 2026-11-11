@@ -1,14 +1,14 @@
-# Publica en GitHub Pages las dos apps web: Granos (en la raíz) y Tablas (en /tablas/).
+# Publica en GitHub Pages las tres apps web: Granos (en la raíz), Tablas (en /tablas/) y Ecos (en /ecos/).
 # Requisito (una sola vez): Settings › Pages › Source = "GitHub Actions".
-name: Granos y Tablas · publicar PWA
+name: Granos, Tablas y Ecos · publicar PWA
 
 on:
   push:
     branches: [main]
-    paths: ['granos/**', 'tablas/**', '.github/workflows/granos-pages.yml']
+    paths: ['granos/**', 'tablas/**', 'ecos/**', '.github/workflows/granos-pages.yml']
   # En los pull requests solo se prueban los tests y la compilación (no se publica).
   pull_request:
-    paths: ['granos/**', 'tablas/**', '.github/workflows/granos-pages.yml']
+    paths: ['granos/**', 'tablas/**', 'ecos/**', '.github/workflows/granos-pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -32,6 +32,7 @@ jobs:
           cache-dependency-path: |
             granos/package-lock.json
             tablas/package-lock.json
+            ecos/package-lock.json
       - name: Granos · tests y compilación
         working-directory: granos
         run: |
@@ -45,11 +46,19 @@ jobs:
           npm run check
           npm test
           npm run build
-      - name: Reunir el sitio (Granos en la raíz, Tablas en /tablas/)
+      - name: Ecos · tests y compilación
+        working-directory: ecos
         run: |
-          mkdir -p site/tablas
+          npm ci
+          npm run check
+          npm test
+          npm run build
+      - name: Reunir el sitio (Granos en la raíz, Tablas en /tablas/, Ecos en /ecos/)
+        run: |
+          mkdir -p site/tablas site/ecos
           cp -r granos/dist/. site/
           cp -r tablas/dist/. site/tablas/
+          cp -r ecos/dist/. site/ecos/
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
