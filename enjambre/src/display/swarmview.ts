@@ -70,7 +70,7 @@ export function drawSwarmView(g: G, w: number, h: number, info: SwarmInfo, tel: 
     // --- Cabezas: dónde lee cada una (antigüedad) y a qué velocidad (altura) ---
     const hd = tel.heads;
     for (let i = 0; i + 2 < hd.length; i += 3) {
-      const age = hd[i], lv = Math.min(1, hd[i + 1]), rate = hd[i + 2];
+      const age = hd[i], lv = Math.max(0, Math.min(1, hd[i + 1])), rate = hd[i + 2];
       if (age < 0 || age > HIST_SECONDS) continue;
       const x = gx + gw - (age / HIST_SECONDS) * gw;
       // log2 de la velocidad: 4x arriba, 1/4x abajo.

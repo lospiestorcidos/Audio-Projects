@@ -23,7 +23,7 @@ DigiSwarm (GPL) ni tiene relación con Hologram Electronics.
 - **Hold** deja de grabar y los motores siguen leyendo lo último que entró. **Bypass** deja pasar la
   señal original y deja sonar las colas.
 
-## Motores (fase 1)
+## Motores
 
 | | Motor | A | B | C | D |
 |---|---|---|---|---|---|
@@ -31,9 +31,20 @@ DigiSwarm (GPL) ni tiene relación con Hologram Electronics.
 | 2 | Mist: nubes de granos | estirada | aleatoria | 1x y 2x | 1x y 0,5x |
 | 3 | Glide: bucles cuya velocidad se desliza | 0,5x → 1x | 2x → 0,5x | 1x → 2x | sube y baja a la vez |
 | 4 | Pattern: repeticiones de un delay | regular | sincopado | racimos | tresillos |
+| 5 | Seq: trozos barajados en ritmos | filtrado | 1x y 0,5x | capas con barridos de filtro | capas, crush |
+| 6 | Drone: drones de bucles cortos | respira | una octava abajo, con barrido | pasabandas resonantes | la entrada mueve el bucle |
+| 7 | Rake: repeticiones de los ataques | el último ataque | copias que se desfasan | cascada | cascada y granos a 2x |
+| 8 | Chops: bloques reordenados | con ráfagas | con tono | filtrado y suave | con tono y crush |
+| 9 | Stutter: ráfagas en lugar de la señal | reordenado | con tono | barridos de filtro | crush |
+| 10 | Arp: los ataques como arpegios | 1x | terceras, quintas y octavas | un filtro por paso | crush |
+| 11 | Warp: repeticiones procesadas | filtros de envolvente | pasabandas resonantes | con tono | granos a 2x |
 
-**Activity** es la densidad (bucles, granos o repeticiones), **Repeats** cuánto dura cada uno (o el
-feedback en Pattern) y **Shape** la forma de cada bucle o grano: Plana, Crece, Golpe o Arco.
+Rake y Arp reaccionan a los **ataques** de lo que entra (un detector compara el nivel rápido con el
+lento). Stutter **silencia la señal original** mientras dura cada ráfaga. Cada cabeza puede llevar su
+propio filtro (con barrido), crush y oscilación de volumen.
+
+**Activity** es la densidad (bucles, granos, repeticiones o la probabilidad de reaccionar a un
+ataque), **Repeats** cuánto dura cada uno (o el feedback en Pattern y Warp) y **Shape** la forma de cada bucle o grano: Plana, Crece, Golpe o Arco.
 **Time** es la rejilla: de 1 compás a 1/32 del tempo.
 
 ## Páginas
@@ -71,10 +82,6 @@ Abajo, siempre a mano: Loop, Stop, Hold, Bypass e I/O.
   29 Reproducir, 30 Sobregrabar, 31 Stop, 34 Borrar, 35 Deshacer.
 - **MIDI clock** y el asistente de controlador, como en Ecos. Solo donde el navegador tiene Web MIDI
   (Chrome o Edge en el ordenador): Safari en iPad no recibe MIDI.
-
-## Pendiente
-
-- Fase 3: los otros 7 motores (Seq, Drone, Rake, Chops, Stutter, Arp, Warp).
 
 ## Sin validar
 
