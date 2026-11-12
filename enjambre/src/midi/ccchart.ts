@@ -21,6 +21,10 @@ const CHART: Record<number, { id: string; mode: 'knob' | 'steps' | 'switch' }> =
   19: { id: 'modDepth', mode: 'knob' },
   20: { id: 'room', mode: 'knob' },
   21: { id: 'loopFade', mode: 'knob' },
+  23: { id: 'reverse', mode: 'switch' },
+  24: { id: 'loopRoute', mode: 'switch' }, // Pre a partir de 64
+  27: { id: 'loopQuant', mode: 'switch' },
+  47: { id: 'reverse', mode: 'switch' },
   48: { id: 'hold', mode: 'switch' },
   102: { id: 'bypass', mode: 'switch' },
 };
@@ -38,4 +42,15 @@ export function ccToParam(cc: number, value: number): [string, number] | null {
     return [c.id, d.min + Math.min(n - 1, Math.floor((value / 128) * n))];
   }
   return [c.id, fromNorm(d, value / 127)];
+}
+
+/** CC que disparan acciones del looper (con un valor de 64 o más). */
+const ACTIONS: Record<number, 'rec' | 'play' | 'dub' | 'stop' | 'clear' | 'undo'> = {
+  28: 'rec', 29: 'play', 30: 'dub', 31: 'stop', 34: 'clear', 35: 'undo',
+};
+
+/** Traduce un CC a una acción del looper. Devuelve null si no es de acción o si el valor es menor de 64. */
+export function ccToLoopAction(cc: number, value: number): 'rec' | 'play' | 'dub' | 'stop' | 'clear' | 'undo' | null {
+  const a = ACTIONS[cc];
+  return a && value >= 64 ? a : null;
 }

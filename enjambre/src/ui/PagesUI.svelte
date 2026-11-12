@@ -3,6 +3,7 @@
   import { PAGES, slotsFor } from '../state/pages.svelte';
   import { ui } from '../state/store.svelte';
   import Display from './Display.svelte';
+  import ELooper from './ELooper.svelte';
   import EMotor from './EMotor.svelte';
   import Enc from './Enc.svelte';
   import Strip from './Strip.svelte';
@@ -21,7 +22,9 @@
       <span class="info">{ui.ioOn ? 'Entrada activa' : 'Entrada apagada'}{ui.clockAlive ? ' · MIDI clock' : ''}</span>
     </div>
     <div class="grid">
-      {#if ui.epage === 'motor'}
+      {#if ui.epage === 'looper'}
+      <ELooper />
+    {:else if ui.epage === 'motor'}
         <EMotor />
       {:else}
         {#each slots as s, i (ui.epage + i + (s?.id ?? ''))}
@@ -51,7 +54,7 @@
   .top { grid-area: top; min-width: 0; }
   .disp { grid-area: disp; display: flex; min-height: 0; min-width: 0; }
   .work { grid-area: work; display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: 0 6px 6px; }
-  nav { grid-area: nav; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 0 6px 4px; }
+  nav { grid-area: nav; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; padding: 0 6px 4px; }
   .kbd { grid-area: kbd; min-height: 0; min-width: 0; }
 
   .title { display: flex; align-items: center; gap: 8px; height: 34px; flex: 0 0 auto; }
@@ -72,7 +75,7 @@
     }
     .work { padding: 0 6px 6px 0; }
     .grid { flex: 1 1 auto; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); }
-    nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .title { height: 30px; }
   }
   @media (orientation: landscape) and (max-height: 480px) {

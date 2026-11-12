@@ -1,7 +1,7 @@
 // Estado de la aplicación (runes de Svelte 5) y acciones: parámetros, entrada de audio, tempo y presets.
 import { AudioHost } from '../audio/host';
 import { downloadBlob } from '../audio/wav';
-import { ccToParam } from '../midi/ccchart';
+import { ccToLoopAction, ccToParam } from '../midi/ccchart';
 import { ClockTracker, TapTempo } from '../midi/clock';
 import { startMidi } from '../midi/midi';
 import { PARAMS, clampParam, defaultValues, formatParam, fromNorm, pdef, pidx, toNorm } from '../shared/params';
@@ -57,6 +57,10 @@ export const ui = $state({
   midiSources: [] as string[],
   /** Está llegando MIDI clock ahora mismo. */
   clockAlive: false,
+  /** Estado del looper (copiado de la telemetría ~10 veces por segundo). */
+  loopState: 0,
+  loopLayer: false,
+  loopPending: false,
   cpu: 0,
   toast: '',
 });
@@ -148,6 +152,12 @@ export function pluck() {
   host.send({ t: 'pluck' });
 }
 
+/** Acción del looper: 'loop' (botón único), 'stop', 'undo', 'clear'… */
+export function loopAction(a: 'loop' | 'rec' | 'play' | 'dub' | 'stop' | 'undo' | 'clear') {
+  void host.resume();
+  host.send({ t: 'loop', a });
+}
+
 /** Vacía el historial y las colas (y quita el Hold). */
 export function clearAll() {
   setParam('hold', 0);
@@ -188,9 +198,10 @@ export function applyPreset(p: Preset) {
     if (i >= 0) a[i] = clampParam(PARAMS[i], p.params[id]); // ignora parámetros de versiones futuras
   }
   // Se conservan el tempo, la ganancia de entrada y el seguimiento del reloj: son del montaje, no del preset.
-  for (const id of ['bpm', 'inGain', 'clockSync']) a[pidx(id)] = ui.values[pidx(id)];
+  for (const id of ['bpm', 'inGain', 'clockSync', 'loopRoute', 'loopQuant']) a[pidx(id)] = ui.values[pidx(id)];
   a[pidx('hold')] = 0;
   a[pidx('bypass')] = 0;
+  a[pidx('reverse')] = 0;
   ui.values = Array.from(a);
   host.setAllParams(a);
   ui.presetName = p.name;
@@ -247,6 +258,8 @@ export async function importPreset(file: File) {
 /** CC de la tabla del Microcosm (en cualquier canal). */
 function applyCc(status: number, cc: number, value: number): boolean {
   if ((status & 0xf0) !== 0xb0) return false;
+  const act = ccToLoopAction(cc, value);
+  if (act) { loopAction(act); return true; }
   const r = ccToParam(cc, value);
   if (!r) return false;
   setParam(r[0], r[1]);
@@ -266,6 +279,12 @@ export async function boot() {
   );
   // Si el reloj deja de llegar, se avisa en pantalla (el BPM se queda donde estaba).
   setInterval(() => { if (ui.clockAlive && !clock.alive(performance.now())) { ui.clockAlive = false; clock.reset(); } }, 500);
+  // Estado del looper para los botones.
+  setInterval(() => {
+    const t = host.tel;
+    if (!t) return;
+    ui.loopState = t.loopState; ui.loopLayer = t.loopLayer; ui.loopPending = t.loopPending;
+  }, 100);
   applyPreset(FACTORY_PRESETS[0]);
   await refreshPresets();
 }
