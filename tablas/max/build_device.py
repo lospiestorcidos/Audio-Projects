@@ -12,7 +12,7 @@ import os
 import struct
 import sys
 
-URL = sys.argv[1] if len(sys.argv) > 1 else "https://lospiestorcidos.github.io/Recent-Projects/tablas/?ui=pages&host=max"
+URL = sys.argv[1] if len(sys.argv) > 1 else "https://lospiestorcidos.github.io/Audio-Projects/tablas/?ui=pages&host=max"
 HERE = os.path.dirname(os.path.abspath(__file__))
 UI_W, UI_H = 1000.0, 640.0  # tamaño de la ventana flotante con la interfaz
 # Bancos de parámetros (los genera el test tests/maxparams.test.ts a partir del esquema de la app).

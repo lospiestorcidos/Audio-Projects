@@ -4,7 +4,7 @@ Delay como app web / PWA: procesa en vivo lo que entra por el micrófono o por u
 audio. Hermano de [Granos](../granos) y [Tablas](../tablas): misma base, mismas dos interfaces de
 8 controles por página y el mismo asistente de controlador MIDI.
 
-Publicado en: https://lospiestorcidos.github.io/Recent-Projects/ecos/
+Publicado en: https://lospiestorcidos.github.io/Audio-Projects/ecos/
 
 ## Uso
 
