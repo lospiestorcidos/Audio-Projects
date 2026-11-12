@@ -19,13 +19,23 @@ export interface ParamDef {
   dest?: string;
 }
 
-/** Motores disponibles. Cada uno tiene 4 variaciones (A–D). */
-export const ENGINES = ['Shards', 'Mist', 'Glide', 'Pattern'] as const;
+/**
+ * Motores disponibles. Cada uno tiene 4 variaciones (A–D). Los 4 primeros se conservan en su sitio
+ * para que los presets guardados sigan apuntando al mismo motor.
+ */
+export const ENGINES = ['Shards', 'Mist', 'Glide', 'Pattern', 'Seq', 'Drone', 'Rake', 'Chops', 'Stutter', 'Arp', 'Warp'] as const;
 export const ENGINE_INFO = [
   'Bucles a varias velocidades',
   'Nubes de granos',
   'Bucles cuya velocidad se desliza',
   'Repeticiones de un delay en patrones',
+  'Trozos barajados en ritmos',
+  'Drones hechos con bucles cortos',
+  'Repeticiones de los ataques',
+  'Bloques reordenados',
+  'Ráfagas en lugar de la señal',
+  'Los ataques como arpegios',
+  'Repeticiones procesadas',
 ];
 export const VARIATIONS = ['A', 'B', 'C', 'D'] as const;
 /** Qué hace cada variación de cada motor (para mostrarlo en pantalla). */
@@ -34,6 +44,13 @@ export const VARIATION_INFO: string[][] = [
   ['estirada', 'aleatoria', '1x y 2x', '1x y 0,5x'],
   ['0,5x → 1x', '2x → 0,5x', '1x → 2x', 'sube y baja a la vez'],
   ['regular', 'sincopado', 'racimos', 'tresillos'],
+  ['filtrado', '1x y 0,5x', 'capas con barridos de filtro', 'capas, crush'],
+  ['respira', 'una octava abajo, con barrido', 'pasabandas resonantes', 'la entrada mueve el bucle'],
+  ['el último ataque', 'copias que se desfasan', 'cascada', 'cascada y granos a 2x'],
+  ['con ráfagas', 'con tono', 'filtrado y suave', 'con tono y crush'],
+  ['reordenado', 'con tono', 'barridos de filtro', 'crush'],
+  ['1x', 'terceras, quintas y octavas', 'un filtro por paso', 'crush'],
+  ['filtros de envolvente', 'pasabandas resonantes', 'con tono', 'granos a 2x'],
 ];
 /** Subdivisión del tempo (rejilla de los motores) y su duración en negras. */
 export const TIMES = ['1 compás', '1/2', '1/4', '1/8', '1/16', '1/32'] as const;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EnjambreEngine } from '../src/audio/worklet/engine';
 import { fft } from './fft';
-import { pidx, stepSeconds } from '../src/shared/params';
+import { ENGINES, pidx, stepSeconds } from '../src/shared/params';
 
 const SR = 48000;
 type E = EnjambreEngine;
@@ -48,22 +48,25 @@ function bands(a: Float32Array, from: number, freqs: number[]): number[] {
 
 describe('Motores (fase 1)', () => {
   it('con la entrada en silencio no suena nada y no falla', () => {
-    for (let engine = 0; engine < 4; engine++) {
+    for (let engine = 0; engine < ENGINES.length; engine++) {
       const e = make({ engine });
       const [L] = run(e, null, 2);
       expect(peak(L)).toBe(0);
     }
   });
-  it('los 4 motores y sus 4 variaciones suenan con un arpegio de prueba y no se desbordan', () => {
-    for (let engine = 0; engine < 4; engine++) {
+  it('los 11 motores y sus 4 variaciones suenan con un arpegio de prueba y no se desbordan', () => {
+    for (let engine = 0; engine < ENGINES.length; engine++) {
       for (let variation = 0; variation < 4; variation++) {
-        const e = make({ engine, variation, activity: 0.8, repeats: 0.6 });
+        // Stutter lanza ráfagas al azar en algunos pasos: con pasos cortos hay más ocasiones de oírlas.
+        const e = make({ engine, variation, activity: 0.8, repeats: 0.6, ...(engine === 8 ? { activity: 1, time: 4 } : {}) });
         e.message({ t: 'pluck' });
         const [L, R] = run(e, null, 4);
         expect(L.every(Number.isFinite) && R.every(Number.isFinite)).toBe(true);
         expect(peak(L)).toBeLessThanOrEqual(1);
-        // Después de que termine el arpegio (1,4 s) sigue sonando el efecto.
-        expect(rms(L, 1.6 * SR, 4 * SR) + rms(R, 1.6 * SR, 4 * SR)).toBeGreaterThan(0.005);
+        // Después de que termine el arpegio (1,4 s) sigue sonando el efecto. Stutter repite lo que está
+        // entrando en ese momento, así que se mide mientras suena el arpegio.
+        const [from, to] = engine === 8 ? [0.3 * SR, 1.6 * SR] : [1.6 * SR, 4 * SR];
+        expect(rms(L, from, to) + rms(R, from, to), `${ENGINES[engine]} ${'ABCD'[variation]}`).toBeGreaterThan(0.005);
       }
     }
   });
@@ -172,4 +175,96 @@ describe('Rendimiento', () => {
     console.log(`[bench] Mist al máximo con reverb: ${(load * 100).toFixed(2)} % de un núcleo`);
     expect(load).toBeLessThan(0.5);
   }, 30000);
+});
+
+describe('Motores (fase 3)', () => {
+  /** Notas cortas de `hz` cada `every` segundos (con ataques claros), durante `seconds`. */
+  const plucks = (hz: number, every: number, seconds: number) =>
+    Float32Array.from({ length: Math.round(seconds * SR) }, (_, i) => {
+      const t = (i / SR) % every;
+      return Math.sin(2 * Math.PI * hz * (i / SR)) * Math.exp(-t * 12) * Math.min(1, t * 2000) * 0.6;
+    });
+
+  it('Rake A: un ataque se repite a intervalos de un paso', () => {
+    const e = make({ engine: 6, variation: 0, activity: 1, repeats: 0.4, time: 3 }); // 1/8 a 120 = 0,25 s
+    run(e, null, 0.5); // historial con algo de pasado
+    const click = new Float32Array(2 * SR);
+    for (let i = 0; i < 2000; i++) click[i] = Math.sin(i * 0.3) * Math.exp(-i / 300) * 0.8;
+    const [L, R] = run(e, click, 2);
+    const step = stepSeconds(3, 120) * SR;
+    const at = (t: number) => rms(L, Math.round(t), Math.round(t + 800)) + rms(R, Math.round(t), Math.round(t + 800));
+    expect(at(step)).toBeGreaterThan(0.02);
+    expect(at(2 * step)).toBeGreaterThan(0.01);
+    expect(at(step * 0.5)).toBeLessThan(at(step) * 0.3); // entre medias, poco
+  });
+  it('Stutter: durante las ráfagas la señal original se calla', () => {
+    const e = make({ engine: 8, variation: 1, activity: 1, repeats: 1, mix: 0 }); // Mix 0: solo se oye la señal original
+    const [L] = run(e, sine(330, 6, 0.5), 6);
+    let silentWindows = 0;
+    for (let t = SR; t + 2400 < 6 * SR; t += 2400) if (rms(L, t, t + 2400) < 0.05) silentWindows++;
+    expect(silentWindows).toBeGreaterThan(3);
+  });
+  it('Drone: sigue sonando segundos después de que la entrada calle', () => {
+    const e = make({ engine: 5, variation: 0, activity: 1, repeats: 1 });
+    run(e, sine(220, 2, 0.5), 2);
+    const [L, R] = run(e, null, 4);
+    expect(rms(L, 2 * SR, 3 * SR) + rms(R, 2 * SR, 3 * SR)).toBeGreaterThan(0.02);
+  });
+  it('Arp B: aparece la quinta (1,5x) de las notas que entran', () => {
+    const e = make({ engine: 9, variation: 1, activity: 1, repeats: 1, time: 3 });
+    const [L] = run(e, plucks(440, 0.5, 4), 4);
+    const [fifth] = bands(L, 2 * SR, [660]);
+    const off = make({ engine: 9, variation: 0, activity: 1, repeats: 1, time: 3 });
+    const [L0] = run(off, plucks(440, 0.5, 4), 4);
+    expect(fifth).toBeGreaterThan(bands(L0, 2 * SR, [660])[0] * 5 + 0.002);
+  });
+  it('Seq A filtra los agudos; Seq B no', () => {
+    const hi = (variation: number) => {
+      const e = make({ engine: 4, variation, activity: 1, repeats: 0.5 });
+      const [L, R] = run(e, sine(7000, 3, 0.5), 3);
+      return rms(L, SR, 3 * SR) + rms(R, SR, 3 * SR);
+    };
+    expect(hi(0)).toBeLessThan(hi(1) * 0.35);
+  });
+  it('Warp y Chops no se desbordan al máximo, con Reverse', () => {
+    for (const engine of [7, 10]) {
+      for (let variation = 0; variation < 4; variation++) {
+        const e = make({ engine, variation, activity: 1, repeats: 1, reverse: 1 });
+        const [L] = run(e, plucks(300, 0.25, 3), 3);
+        expect(L.every(Number.isFinite)).toBe(true);
+        expect(peak(L)).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+});
+
+describe('Rendimiento (fase 3)', () => {
+  it('cada motor al máximo, con reverb y filtro', () => {
+    let worst = 0, name = '';
+    for (let engine = 0; engine < ENGINES.length; engine++) {
+      const e = make({ engine, variation: 2, activity: 1, repeats: 1, space: 1, filter: -0.3, modDepth: 1 });
+      const input = Float32Array.from({ length: 3 * SR }, (_, i) => Math.sin(i * 0.05) * Math.exp(-((i / SR) % 0.3) * 10) * 0.5);
+      run(e, input, 1);
+      const t0 = performance.now();
+      run(e, input.subarray(SR), 2);
+      const load = (performance.now() - t0) / 2000;
+      if (load > worst) { worst = load; name = ENGINES[engine]; }
+    }
+    console.log(`[bench] peor motor: ${name}, ${(worst * 100).toFixed(2)} % de un núcleo`);
+    expect(worst).toBeLessThan(0.5);
+  }, 60000);
+});
+
+describe('Formas de las cabezas', () => {
+  it('el nivel de cada cabeza (ventana) está siempre entre 0 y 1', () => {
+    for (const engine of [6, 9, 7, 5]) {
+      const e = make({ engine, variation: 2, activity: 1, repeats: 1, time: 3 });
+      e.message({ t: 'pluck' });
+      for (let i = 0; i < 40; i++) {
+        run(e, null, 0.05);
+        const h = e.telemetry(0).heads;
+        for (let k = 1; k < h.length; k += 3) { expect(h[k]).toBeGreaterThanOrEqual(0); expect(h[k]).toBeLessThanOrEqual(1.0001); }
+      }
+    }
+  });
 });

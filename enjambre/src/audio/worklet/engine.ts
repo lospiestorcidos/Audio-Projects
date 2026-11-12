@@ -59,6 +59,17 @@ const PATTERN_TAPS = [
   [2 / 3, 4 / 3, 2, 8 / 3, 10 / 3, 4, 14 / 3, 16 / 3],
 ];
 
+// --- Motores de la fase 3 ---
+/** Filtro de cada cabeza: 0 ninguno, 1 paso bajo, 2 pasabanda, 3 paso alto. */
+const F_NONE = 0, F_LP = 1, F_BP = 2, F_HP = 3;
+/** Arp: velocidad de cada repetición (B: terceras, quintas y octavas; D: con crush). */
+const ARP_RATES = [[1], [1, 1.26, 1.5, 2], [1], [1, 1.5, 2, 1.5]];
+/** Arp C y Warp B: frecuencia del filtro de cada paso o de cada tap. */
+const STEP_CUTS = [400, 900, 2000, 4500];
+const CHOPS_RATES = [1, 0.5, 2, 0.75, 1.5];
+/** Máximo de cabezas programadas para más adelante (Rake, Arp, Stutter, ráfagas de Chops). */
+const MAX_EVENTS = 48;
+
 // --- Reverb (Space): red de 8 retardos realimentados (FDN) con mezcla de Hadamard ---
 const FDN_MS = [23.1, 29.3, 31.7, 37.9, 41.3, 43.7, 47.1, 53.3];
 /** Por sala: escala de los retardos, tiempo de caída (s) y amortiguación de agudos. */
@@ -111,6 +122,37 @@ export class EnjambreEngine {
   private hShapeI = new Uint8Array(MAX_HEADS);
   private hShapeF = new Float32Array(MAX_HEADS);
   private hLevel = new Float32Array(MAX_HEADS); // último nivel, para la pantalla
+  // Procesado propio de cada cabeza (motores de la fase 3).
+  private hRev = new Uint8Array(MAX_HEADS); // se lee al revés (además del Reverse general)
+  private hFade = new Float32Array(MAX_HEADS); // muestras de fundido al nacer y al morir
+  private hFm = new Uint8Array(MAX_HEADS); // tipo de filtro
+  private hF0 = new Float32Array(MAX_HEADS); // frecuencia al nacer (Hz)
+  private hFr = new Float32Array(MAX_HEADS); // log(frecuencia final / inicial): barrido a lo largo de la vida
+  private hK = new Float32Array(MAX_HEADS); // amortiguación del filtro (2 = suave, cerca de 0 = resonante)
+  private hFs = new Float32Array(MAX_HEADS * 4); // estado del filtro: 2 integradores por canal
+  private hCrush = new Uint8Array(MAX_HEADS); // crush: muestras que se repite cada valor (0 = sin crush)
+  private hHoldN = new Uint8Array(MAX_HEADS);
+  private hHoldL = new Float32Array(MAX_HEADS);
+  private hHoldR = new Float32Array(MAX_HEADS);
+  private hBreath = new Float32Array(MAX_HEADS); // Drone A: oscilación de volumen (ciclos por muestra)
+  private hBreathPh = new Float32Array(MAX_HEADS);
+
+  /** Especificación de la próxima cabeza (se rellena y se lanza con spawnSpec, sin reservar memoria). */
+  private sp = {
+    base: 0, len: 0, rate: 1, rateEnd: 1, life: 0, loop: false, gain: 0.6, pan: 0,
+    shape: -1, fade: 0, rev: false, fm: F_NONE, f0: 1000, f1: 1000, q: 0, crush: 0, breath: 0,
+  };
+  // Cabezas programadas: cuándo nacen (en muestras de "now") y su especificación.
+  private evN = 0;
+  private evDue = new Float64Array(MAX_EVENTS);
+  private evBase = new Float64Array(MAX_EVENTS);
+  private evNum = new Float32Array(MAX_EVENTS * 12);
+  /** Muestras procesadas desde el arranque (siempre avanza, también con Hold). */
+  private now = 0;
+  // Detector de ataques (Rake, Arp).
+  private envFast = 0; private envSlow = 0; private lastOnset = -1e9;
+  // Stutter: la señal original se silencia mientras dura la ráfaga.
+  private dryMuteUntil = 0; private dryMul = 1;
 
   // --- Rejilla y planificación ---
   private sc = 0; // muestras dentro del paso actual
@@ -165,6 +207,7 @@ export class EnjambreEngine {
         for (const d of this.fdn) d.fill(0);
         this.modL.fill(0); this.modR.fill(0);
         this.f1L = this.f2L = this.f1R = this.f2R = 0;
+        this.evN = 0; this.dryMuteUntil = 0;
         break;
       case 'pluck': this.pluckT = 0; break;
       case 'loop': this.looper.action(m.a, this.p[P.loopQuant] >= 0.5); break;
@@ -194,28 +237,95 @@ export class EnjambreEngine {
     return -1;
   }
 
+  /** Deja la especificación de cabeza con sus valores por defecto. */
+  private resetSpec() {
+    const sp = this.sp;
+    sp.rate = 1; sp.rateEnd = 1; sp.loop = false; sp.gain = 0.6; sp.pan = 0; sp.shape = -1;
+    sp.fade = 0.008 * this.sr; sp.rev = false; sp.fm = F_NONE; sp.f0 = 1000; sp.f1 = 1000; sp.q = 0;
+    sp.crush = 0; sp.breath = 0;
+  }
+
   /** Lanza una cabeza. len y life en muestras; base = inicio del segmento en el historial. */
   private spawn(base: number, len: number, rate: number, rateEnd: number, life: number, loop: boolean, gain: number, pan: number) {
+    this.resetSpec();
+    const sp = this.sp;
+    sp.base = base; sp.len = len; sp.rate = rate; sp.rateEnd = rateEnd; sp.life = life; sp.loop = loop;
+    sp.gain = gain; sp.pan = pan;
+    this.spawnSpec();
+  }
+
+  /** Lanza la cabeza descrita en this.sp. */
+  private spawnSpec() {
+    const sp = this.sp, { base, len, life } = sp;
     const k = this.freeHead();
     if (k < 0 || len < 64 || life < 64) return;
     // No se lee nada más antiguo que lo que queda en el historial al final de la vida de la cabeza.
     if (base < this.wt - HIST + SAFE + life) return;
-    if (base < 0) return;
+    if (base < 0 || base + len > this.wt) return;
     this.hOn[k] = 1;
-    this.hLoop[k] = loop ? 1 : 0;
+    this.hLoop[k] = sp.loop ? 1 : 0;
     this.hBase[k] = base;
     this.hLen[k] = len;
     this.hPos[k] = 0;
-    this.hRate[k] = rate;
-    this.hRateMul[k] = rateEnd === rate ? 1 : Math.pow(rateEnd / rate, 1 / life);
+    this.hRate[k] = sp.rate;
+    this.hRateMul[k] = sp.rateEnd === sp.rate ? 1 : Math.pow(sp.rateEnd / sp.rate, 1 / life);
     this.hLife[k] = life;
     this.hTotal[k] = life;
-    const a = (Math.max(-1, Math.min(1, pan)) + 1) * (Math.PI / 4); // paneo de potencia constante
-    this.hGl[k] = gain * Math.cos(a) * Math.SQRT2;
-    this.hGr[k] = gain * Math.sin(a) * Math.SQRT2;
-    const sh = this.p[P.shape] * 3, si = Math.min(2, Math.floor(sh));
+    const a = (Math.max(-1, Math.min(1, sp.pan)) + 1) * (Math.PI / 4); // paneo de potencia constante
+    this.hGl[k] = sp.gain * Math.cos(a) * Math.SQRT2;
+    this.hGr[k] = sp.gain * Math.sin(a) * Math.SQRT2;
+    // Forma: 0..1 (Plana, Crece, Golpe, Arco); la propia de la cabeza o la del control Shape.
+    const sh = Math.min(1, sp.shape >= 0 ? sp.shape : this.p[P.shape]) * 3, si = Math.min(2, Math.floor(sh));
     this.hShapeI[k] = si;
     this.hShapeF[k] = sh - si;
+    this.hRev[k] = sp.rev ? 1 : 0;
+    this.hFade[k] = Math.max(16, Math.min(sp.fade, life * 0.45));
+    this.hFm[k] = sp.fm;
+    this.hF0[k] = sp.f0;
+    this.hFr[k] = Math.log(sp.f1 / sp.f0);
+    this.hK[k] = 2 - 1.9 * sp.q;
+    this.hFs.fill(0, k * 4, k * 4 + 4);
+    this.hCrush[k] = sp.crush; this.hHoldN[k] = 0;
+    this.hBreath[k] = sp.breath / this.sr; this.hBreathPh[k] = this.rng.next();
+  }
+
+  /** Programa la cabeza de this.sp para dentro de `delay` muestras. */
+  private schedule(delay: number) {
+    if (this.evN >= MAX_EVENTS) return;
+    const i = this.evN++, sp = this.sp, o = i * 12;
+    this.evDue[i] = this.now + delay;
+    this.evBase[i] = sp.base;
+    const v = this.evNum;
+    v[o] = sp.len; v[o + 1] = sp.rate; v[o + 2] = sp.rateEnd; v[o + 3] = sp.life; v[o + 4] = sp.gain;
+    v[o + 5] = sp.pan; v[o + 6] = sp.shape; v[o + 7] = sp.fm; v[o + 8] = sp.f0; v[o + 9] = sp.f1;
+    v[o + 10] = sp.q; v[o + 11] = (sp.crush & 255) | (sp.rev ? 256 : 0) | (sp.loop ? 512 : 0);
+  }
+
+  /** Lanza las cabezas programadas que ya tocan. */
+  private runEvents() {
+    for (let i = 0; i < this.evN; i++) {
+      if (this.evDue[i] > this.now) continue;
+      const v = this.evNum, o = i * 12, sp = this.sp;
+      this.resetSpec();
+      sp.base = this.evBase[i]; sp.len = v[o]; sp.rate = v[o + 1]; sp.rateEnd = v[o + 2]; sp.life = v[o + 3];
+      sp.gain = v[o + 4]; sp.pan = v[o + 5]; sp.shape = v[o + 6]; sp.fm = v[o + 7]; sp.f0 = v[o + 8];
+      sp.f1 = v[o + 9]; sp.q = v[o + 10];
+      const bits = v[o + 11];
+      sp.crush = bits & 255; sp.rev = (bits & 256) !== 0; sp.loop = (bits & 512) !== 0;
+      this.spawnSpec();
+      // Se quita de la cola (el último ocupa su sitio).
+      const last = --this.evN;
+      this.evDue[i] = this.evDue[last]; this.evBase[i] = this.evBase[last];
+      this.evNum.copyWithin(o, last * 12, last * 12 + 12);
+      i--;
+    }
+  }
+
+  /** Cuántas cabezas o programadas hay ahora (para no amontonar más de la cuenta). */
+  private busy(): number {
+    let c = this.evN;
+    for (let k = 0; k < MAX_HEADS; k++) c += this.hOn[k];
+    return c;
   }
 
   /** Un paso de la rejilla: Shards y Glide lanzan bucles hechos con el último paso de entrada. */
@@ -246,6 +356,159 @@ export class EnjambreEngine {
         for (const [r0, r1] of GLIDE_PAIRS[v]) {
           this.spawn(this.ref - len, len, r0, r1, life, true, 0.55, (this.rng.next() * 2 - 1) * 0.8);
         }
+      }
+    } else if (engine >= 4) {
+      this.stepNew(engine, v, act, rep, stepLen);
+    }
+  }
+
+  /** Probabilidad → número entero de cosas (con la parte decimal al azar). */
+  private count(expected: number): number {
+    let n = Math.floor(expected);
+    if (this.rng.next() < expected - n) n++;
+    return n;
+  }
+
+  /** Paso de la rejilla para los motores de la fase 3. */
+  private stepNew(engine: number, v: number, act: number, rep: number, stepLen: number) {
+    const sr = this.sr, rng = this.rng, sp = this.sp, ref = this.ref;
+    const pan = () => (rng.next() * 2 - 1) * 0.8;
+    if (engine === 4) {
+      // Seq: trozos de los últimos 8 pasos, barajados y tocados en la rejilla.
+      // Activity = trozos por paso; Repeats = su duración (de 1/4 de paso a 2 pasos).
+      const n = this.count(0.5 + act * 1.5);
+      for (let i = 0; i < n; i++) {
+        const layers = v >= 2 ? 2 : 1;
+        for (let l = 0; l < layers; l++) {
+          this.resetSpec();
+          sp.len = Math.min(2 * sr, stepLen * (0.25 + rep * 1.75) * (v === 1 && act > 0.8 ? 2 : 1));
+          sp.rate = v === 1 ? rng.pick([1, 0.5]) : 1;
+          sp.rateEnd = sp.rate;
+          const span = sp.len * sp.rate;
+          sp.base = ref - span - Math.floor(rng.next() * 8) * stepLen;
+          sp.life = sp.len; sp.len = span; sp.gain = 0.6 / Math.sqrt(layers); sp.pan = pan();
+          if (v === 0) { sp.fm = F_LP; sp.f0 = sp.f1 = 1200 + rng.next() * 1800; sp.q = 0.3; }
+          if (v === 2) { sp.fm = F_LP; sp.f0 = l ? 4000 : 300; sp.f1 = l ? 300 : 4000; sp.q = 0.5; }
+          if (v === 3) sp.crush = 4 + Math.floor(rng.next() * 6);
+          this.spawnSpec();
+        }
+      }
+    } else if (engine === 5) {
+      // Drone: mantiene entre 2 y 6 bucles cortos sonando mucho tiempo. Repeats = cuánto dura cada uno.
+      const target = 2 + Math.round(act * 4);
+      let tries = 2;
+      while (this.busy() < target && tries-- > 0) {
+        this.resetSpec();
+        const loopLen = (0.06 + rng.next() * 0.19) * sr;
+        sp.len = loopLen; sp.loop = true; sp.shape = 0; sp.pan = pan(); sp.gain = 0.45;
+        sp.base = ref - loopLen - rng.next() * 0.5 * sr;
+        sp.life = v === 3 ? (1 + rng.next()) * sr : (2 + rep * 16 * (0.6 + rng.next() * 0.4)) * sr;
+        sp.life = Math.min(sp.life, 7.5 * sr);
+        sp.fade = sp.life * 0.3;
+        if (v === 0) sp.breath = 0.15 + rng.next() * 0.35;
+        if (v === 1) { sp.rate = sp.rateEnd = 0.5; sp.fm = F_LP; sp.f0 = 200; sp.f1 = 2500; sp.q = 0.4; }
+        if (v === 2) { sp.fm = F_BP; sp.f0 = sp.f1 = rng.pick([300, 450, 600, 900, 1350, 2000, 3000]); sp.q = 0.85; sp.gain = 0.9; }
+        this.spawnSpec();
+      }
+    } else if (engine === 7) {
+      // Chops: bloques de un paso de los últimos 4, reordenados; a veces al revés.
+      if (rng.next() < 0.3 + act * 0.7) {
+        this.resetSpec();
+        const blockLen = Math.min(2.5 * sr, stepLen);
+        sp.rate = sp.rateEnd = v === 1 || v === 3 ? rng.pick(CHOPS_RATES) : 1;
+        const span = blockLen * sp.rate;
+        sp.base = ref - span - Math.floor(rng.next() * 4) * stepLen;
+        sp.len = span; sp.life = blockLen * (0.5 + rep * 0.5); sp.pan = pan();
+        sp.rev = rng.next() < 0.3;
+        if (v === 2) { sp.fm = F_LP; sp.f0 = sp.f1 = 900; sp.q = 0.2; sp.shape = 1; }
+        if (v === 3) sp.crush = 6;
+        this.spawnSpec();
+        // A: ráfaga, el principio del bloque repetido rápido.
+        if (v === 0 && rng.next() < 0.25 + act * 0.25) {
+          const slice = Math.max(0.02 * sr, blockLen / 8);
+          const base = sp.base;
+          for (let r = 0; r < 4; r++) {
+            this.resetSpec();
+            sp.base = base; sp.len = slice; sp.life = slice; sp.shape = 0; sp.gain = 0.55; sp.pan = pan();
+            this.schedule(blockLen * 0.5 + r * slice);
+          }
+        }
+      }
+    } else if (engine === 8) {
+      // Stutter: a veces, en vez de la señal, una ráfaga de un trozo repetido.
+      if (this.now >= this.dryMuteUntil && rng.next() < act * 0.6) {
+        const slice = Math.max(0.03 * sr, stepLen / rng.pick([2, 4, 8]));
+        const reps = 2 + Math.round(rep * 6);
+        const total = Math.min(reps * slice, 2 * stepLen);
+        const n = Math.floor(total / slice);
+        const base = v === 0 ? ref - slice - Math.floor(rng.next() * 4) * stepLen : ref - slice;
+        for (let r = 0; r < n; r++) {
+          this.resetSpec();
+          sp.base = base; sp.len = slice; sp.life = slice; sp.shape = 0; sp.gain = 0.8;
+          if (v === 1) { sp.rate = sp.rateEnd = Math.pow(2, r / 12); sp.len = slice; sp.life = slice / sp.rate; }
+          if (v === 2) { sp.fm = F_LP; sp.f0 = sp.f1 = 6000 * Math.pow(0.6, r); sp.q = 0.6; }
+          if (v === 3) sp.crush = 5 + r;
+          this.schedule(r * slice);
+        }
+        this.dryMuteUntil = this.now + n * slice;
+      }
+    } else if (engine === 10) {
+      // Warp: como un delay de varios taps, pero cada tap se procesa (filtro, tono o granos).
+      const nTaps = 1 + Math.round(act * 3), fb = 0.25 + rep * 0.65;
+      const seg = Math.min(stepLen, 2 * sr);
+      for (let k = 1, g = 0.8; k <= nTaps; k++, g *= fb) {
+        this.resetSpec();
+        sp.gain = g; sp.pan = k & 1 ? -0.5 : 0.5; sp.shape = 0; sp.fade = 0.004 * sr;
+        sp.len = seg; sp.life = seg;
+        sp.base = ref - k * stepLen;
+        if (v === 0) { sp.fm = F_LP; sp.f0 = 250; sp.f1 = 4000; sp.q = 0.5; }
+        if (v === 1) { sp.fm = F_BP; sp.f0 = sp.f1 = STEP_CUTS[(k - 1) % 4]; sp.q = 0.8; sp.gain = g * 1.6; }
+        if (v === 2) { sp.rate = sp.rateEnd = k & 1 ? 2 : 0.5; sp.len = seg * sp.rate; sp.base = ref - k * stepLen - Math.max(0, sp.len - seg); }
+        if (v === 3) { sp.rate = sp.rateEnd = 2; sp.len = seg / 2; sp.loop = true; }
+        this.spawnSpec();
+      }
+    }
+  }
+
+  /** Un ataque nuevo en la entrada (posición en el historial): Rake y Arp lo repiten. */
+  private onOnset(at: number, stepLen: number) {
+    const engine = Math.round(this.p[P.engine]), v = Math.round(this.p[P.variation]);
+    const act = this.p[P.activity], rep = this.p[P.repeats], sr = this.sr, rng = this.rng, sp = this.sp;
+    if (engine !== 6 && engine !== 9) return;
+    if (rng.next() > 0.35 + act * 0.65 || this.evN > MAX_EVENTS - 10) return;
+    const grain = Math.min(stepLen * 0.9, 0.45 * sr);
+    const n = engine === 6 ? 1 + Math.round(rep * 7) : 2 + Math.round(rep * 6);
+    if (engine === 6) {
+      // Rake: el ataque repetido como un eco, con variaciones de ritmo.
+      let t = 0;
+      for (let r = 0; r < n; r++) {
+        const dt = v >= 2 ? stepLen * Math.pow(0.8, r) : stepLen;
+        t += Math.max(grain * 0.5, dt);
+        for (let c = 0; c < (v === 1 ? 2 : 1); c++) {
+          this.resetSpec();
+          sp.base = at; sp.len = grain; sp.life = grain; sp.gain = 0.7 * Math.pow(0.78, r);
+          sp.pan = v === 1 ? (c ? 0.7 : -0.7) : (rng.next() * 2 - 1) * 0.6;
+          sp.shape = 2 / 3; // Golpe: conserva el ataque
+          this.schedule(v === 1 && c ? t * 1.03 : t);
+        }
+        if (v === 3 && r & 1) {
+          this.resetSpec();
+          sp.base = at; sp.rate = sp.rateEnd = 2; sp.len = grain; sp.life = grain / 2;
+          sp.gain = 0.5 * Math.pow(0.78, r); sp.pan = (rng.next() * 2 - 1) * 0.8;
+          this.schedule(t + grain * 0.25);
+        }
+      }
+    } else {
+      // Arp: el ataque en cada paso siguiente, con un patrón de alturas o de filtros.
+      const rates = ARP_RATES[v];
+      for (let r = 0; r < n; r++) {
+        this.resetSpec();
+        sp.rate = sp.rateEnd = rates[r % rates.length];
+        sp.base = at; sp.len = grain; sp.life = grain / sp.rate;
+        sp.gain = 0.65 * Math.pow(0.85, r); sp.pan = r & 1 ? 0.5 : -0.5; sp.shape = 2 / 3; // Golpe
+        if (v === 2) { sp.fm = F_BP; sp.f0 = sp.f1 = STEP_CUTS[r % 4]; sp.q = 0.6; sp.gain *= 1.5; }
+        if (v === 3) sp.crush = 6;
+        this.schedule((r + 1) * stepLen);
       }
     }
   }
@@ -302,6 +565,10 @@ export class EnjambreEngine {
     const looper = this.looper, reverse = p[P.reverse] >= 0.5, pre = p[P.loopRoute] >= 0.5;
     const loopSpeed = LOOP_SPEED_RATES[Math.round(p[P.loopSpeed])], loopFade = loopFadeSeconds(p[P.loopFade]);
     const loopLevel = p[P.loopLevel];
+    // Detector de ataques: solo lo usan Rake y Arp.
+    const detect = (engine === 6 || engine === 9) && !hold && !bypass;
+    const atk = 1 - Math.exp(-1 / (0.001 * sr)), rel = 1 - Math.exp(-1 / (0.05 * sr)), slow = 1 - Math.exp(-1 / (0.3 * sr));
+    const minGap = 0.08 * sr, dryAtk = 1 - Math.exp(-1 / (0.004 * sr));
 
     let { wt, play, sc, step, mistNext, scan } = this;
     let sMix = this.sMix, sIn = this.sIn, sFx = this.sFx, sSpace = this.sSpace;
@@ -356,6 +623,20 @@ export class EnjambreEngine {
         if (play >= wt) play -= holdWin;
       }
 
+      // --- Detector de ataques: el nivel rápido supera con creces al lento ---
+      if (detect) {
+        this.envFast += (m - this.envFast) * (m > this.envFast ? atk : rel);
+        this.envSlow += (m - this.envSlow) * slow;
+        if (this.envFast > 0.02 && this.envFast > this.envSlow * 2.2 && this.now - this.lastOnset > minGap) {
+          this.lastOnset = this.now;
+          this.onOnset(wt - 0.005 * sr, stepLen);
+        }
+      }
+      this.now++;
+      if (this.evN) this.runEvents();
+      // Stutter: la señal original baja mientras suena la ráfaga.
+      this.dryMul += ((this.now < this.dryMuteUntil ? 0 : 1) - this.dryMul) * dryAtk;
+
       // --- Rejilla y planificación (con Bypass no nace nada nuevo) ---
       if (++sc >= stepLen) {
         sc -= stepLen;
@@ -385,15 +666,48 @@ export class EnjambreEngine {
         const t0 = SHAPE_TABLES[this.hShapeI[k]], t1 = SHAPE_TABLES[this.hShapeI[k] + 1];
         const w0 = t0[xi] + xf * (t0[xi + 1] - t0[xi]), w1 = t1[xi] + xf * (t1[xi + 1] - t1[xi]);
         let win = w0 + this.hShapeF[k] * (w1 - w0);
-        // Fundido de 8 ms al nacer y al morir (sin clics).
-        const life = this.hLife[k], el = this.hTotal[k] - life, fade = 0.008 * sr;
+        // Fundido al nacer y al morir (sin clics; largo en los drones).
+        const life = this.hLife[k], total = this.hTotal[k], el = total - life, fade = this.hFade[k];
         if (el < fade) win *= el / fade;
         if (life < fade) win *= life / fade;
+        if (this.hBreath[k] > 0) {
+          let bp = this.hBreathPh[k] + this.hBreath[k];
+          if (bp >= 1) bp -= 1;
+          this.hBreathPh[k] = bp;
+          win *= 0.55 + 0.45 * Math.sin(TAU * bp);
+        }
         this.hLevel[k] = win;
-        // Con Reverse, cada bucle o grano se lee de atrás hacia delante.
-        const rp = this.hBase[k] + (reverse ? len - pos : pos), ip = Math.floor(rp), fr = rp - ip, j = ip & MASK, j1 = (ip + 1) & MASK;
-        wl += (bufL[j] + fr * (bufL[j1] - bufL[j])) * win * this.hGl[k];
-        wr += (bufR[j] + fr * (bufR[j1] - bufR[j])) * win * this.hGr[k];
+        // Con Reverse (general o de la cabeza), cada bucle o grano se lee de atrás hacia delante.
+        const back = reverse !== (this.hRev[k] === 1);
+        const rp = this.hBase[k] + (back ? len - pos : pos), ip = Math.floor(rp), fr = rp - ip, j = ip & MASK, j1 = (ip + 1) & MASK;
+        let sl = bufL[j] + fr * (bufL[j1] - bufL[j]);
+        let sr2 = bufR[j] + fr * (bufR[j1] - bufR[j]);
+        // Crush: repite cada valor unas muestras y lo redondea a pocos niveles.
+        const cr = this.hCrush[k];
+        if (cr) {
+          if (this.hHoldN[k] === 0) {
+            this.hHoldL[k] = Math.round(sl * 24) / 24; this.hHoldR[k] = Math.round(sr2 * 24) / 24;
+            this.hHoldN[k] = cr;
+          }
+          this.hHoldN[k]--;
+          sl = this.hHoldL[k]; sr2 = this.hHoldR[k];
+        }
+        // Filtro propio (SVF), con barrido de frecuencia a lo largo de la vida de la cabeza.
+        const fm = this.hFm[k];
+        if (fm) {
+          let fc = this.hF0[k];
+          if (this.hFr[k] !== 0) fc *= Math.exp((el / total) * this.hFr[k]);
+          const wc = Math.min(0.2, fc / sr) * Math.PI, gg = wc * (1 + (wc * wc) / 3); // ≈ tan(wc)
+          const kq = this.hK[k], d1 = 1 / (1 + gg * (gg + kq)), d2 = gg * d1, d3 = gg * d2, o = k * 4, fs = this.hFs;
+          let v3 = sl - fs[o + 1], v1 = d1 * fs[o] + d2 * v3, v2 = fs[o + 1] + d2 * fs[o] + d3 * v3;
+          fs[o] = 2 * v1 - fs[o]; fs[o + 1] = 2 * v2 - fs[o + 1];
+          sl = fm === F_LP ? v2 : fm === F_BP ? v1 * kq : sl - kq * v1 - v2;
+          v3 = sr2 - fs[o + 3]; v1 = d1 * fs[o + 2] + d2 * v3; v2 = fs[o + 3] + d2 * fs[o + 2] + d3 * v3;
+          fs[o + 2] = 2 * v1 - fs[o + 2]; fs[o + 3] = 2 * v2 - fs[o + 3];
+          sr2 = fm === F_LP ? v2 : fm === F_BP ? v1 * kq : sr2 - kq * v1 - v2;
+        }
+        wl += sl * win * this.hGl[k];
+        wr += sr2 * win * this.hGr[k];
         pos += this.hRate[k];
         if (pos >= len) {
           if (this.hLoop[k]) pos -= len; else { this.hOn[k] = 0; continue; }
@@ -481,7 +795,7 @@ export class EnjambreEngine {
 
       // --- Mezcla con la señal original; con Bypass pasa la señal entera y suenan las colas ---
       const kk = sMix * (Math.PI / 2);
-      const dryG = bypass ? 1 : Math.cos(kk), wetG = Math.sin(kk);
+      const dryG = bypass ? 1 : Math.cos(kk) * this.dryMul, wetG = Math.sin(kk);
       let ol = xl * dryG + wl * wetG, or = xr * dryG + wr * wetG;
       // Ruta Post: el looper graba lo que se oye (sin el propio bucle) y lo suma a la salida.
       if (!pre) {
