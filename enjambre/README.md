@@ -4,7 +4,7 @@ Efecto granular y de micro-bucles sobre la entrada de audio (micrófono o interf
 PWA. Hermano de Granos, Tablas y Ecos: misma base, mismas dos interfaces de 8 controles por página y
 el mismo asistente de controlador MIDI.
 
-Publicado en: https://lospiestorcidos.github.io/Recent-Projects/enjambre/
+Publicado en: https://lospiestorcidos.github.io/Audio-Projects/enjambre/
 
 ## Referencia
 

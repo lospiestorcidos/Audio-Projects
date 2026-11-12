@@ -5,7 +5,7 @@ comparte su arquitectura, sus dos interfaces, el asistente de controlador MIDI y
 convertirlo en dispositivo de Max for Live. Prestaciones inspiradas en Wavetable de Ableton;
 interfaz, código y tablas propios.
 
-Publicado en: https://lospiestorcidos.github.io/Recent-Projects/tablas/
+Publicado en: https://lospiestorcidos.github.io/Audio-Projects/tablas/
 
 ## Uso
 
