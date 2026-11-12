@@ -8,15 +8,18 @@
 //
 // No depende del navegador: corre en un AudioWorklet o en Node (tests). Todo está preasignado.
 import {
-  defaultValues, FILTER_DEAD, HIST_POINTS, HIST_SECONDS, MAX_HEADS, pidx, stepSeconds,
-  type EngineMsg, type Telemetry,
+  defaultValues, FILTER_DEAD, HIST_POINTS, HIST_SECONDS, LOOP_SPEED_RATES, loopFadeSeconds, MAX_HEADS, pidx,
+  stepSeconds, type EngineMsg, type Telemetry,
 } from '../../shared/params';
+import { Looper } from './looper';
 
 const P = {
   engine: pidx('engine'), variation: pidx('variation'), activity: pidx('activity'), repeats: pidx('repeats'),
   shape: pidx('shape'), filter: pidx('filter'), mix: pidx('mix'), time: pidx('time'), space: pidx('space'),
   inGain: pidx('inGain'), modDepth: pidx('modDepth'), modRate: pidx('modRate'), reso: pidx('reso'),
   fxVol: pidx('fxVol'), room: pidx('room'), hold: pidx('hold'), bypass: pidx('bypass'), bpm: pidx('bpm'),
+  loopLevel: pidx('loopLevel'), loopSpeed: pidx('loopSpeed'), loopFade: pidx('loopFade'), reverse: pidx('reverse'),
+  loopRoute: pidx('loopRoute'), loopQuant: pidx('loopQuant'),
 };
 
 const TAU = Math.PI * 2;
@@ -135,6 +138,9 @@ export class EnjambreEngine {
   private sMix = 0.5; private sIn = 1; private sFx = 1; private sSpace = 0.25;
   private pluckT = -1;
 
+  /** Looper (60 s, una capa de sobregrabación). */
+  readonly looper: Looper;
+
   // --- Telemetría ---
   private inPeak = 0; private outPeak = 0;
   private hist = new Float32Array(HIST_POINTS);
@@ -147,6 +153,7 @@ export class EnjambreEngine {
     this.histStep = Math.max(1, Math.round((sampleRate * HIST_SECONDS) / HIST_POINTS));
     this.patStep = stepSeconds(this.p[P.time], this.p[P.bpm]) * sampleRate;
     this.setRoom(this.p[P.room]);
+    this.looper = new Looper(sampleRate);
   }
 
   message(m: EngineMsg) {
@@ -160,6 +167,7 @@ export class EnjambreEngine {
         this.f1L = this.f2L = this.f1R = this.f2R = 0;
         break;
       case 'pluck': this.pluckT = 0; break;
+      case 'loop': this.looper.action(m.a, this.p[P.loopQuant] >= 0.5); break;
     }
   }
 
@@ -290,6 +298,10 @@ export class EnjambreEngine {
     const g = Math.tan((Math.PI * cut) / sr), kq = 2 - 1.9 * p[P.reso];
     const c1 = 1 / (1 + g * (g + kq)), c2 = g * c1, c3 = g * c2;
     const damp = this.fdnDamp;
+    // Looper y Reverse.
+    const looper = this.looper, reverse = p[P.reverse] >= 0.5, pre = p[P.loopRoute] >= 0.5;
+    const loopSpeed = LOOP_SPEED_RATES[Math.round(p[P.loopSpeed])], loopFade = loopFadeSeconds(p[P.loopFade]);
+    const loopLevel = p[P.loopLevel];
 
     let { wt, play, sc, step, mistNext, scan } = this;
     let sMix = this.sMix, sIn = this.sIn, sFx = this.sFx, sSpace = this.sSpace;
@@ -319,6 +331,11 @@ export class EnjambreEngine {
       }
       const a = xl < 0 ? -xl : xl, b = xr < 0 ? -xr : xr, m = a > b ? a : b;
       if (m > inPeak) inPeak = m;
+      // Ruta Pre: el looper graba la entrada y lo que suena del bucle entra al efecto como otra fuente.
+      if (pre) {
+        looper.tick(xl, xr, loopSpeed, reverse, loopFade);
+        xl += looper.outL * loopLevel; xr += looper.outR * loopLevel;
+      }
 
       // --- Historial: con Hold no se graba; con Bypass se graba silencio (las colas siguen) ---
       if (!hold) {
@@ -343,6 +360,7 @@ export class EnjambreEngine {
       if (++sc >= stepLen) {
         sc -= stepLen;
         step++;
+        looper.onStep(); // acciones del looper que esperaban al paso (Cuantizar)
         if (!bypass && wt > stepLen) this.onStep(stepLen);
       }
       if (engine === 1) {
@@ -372,7 +390,8 @@ export class EnjambreEngine {
         if (el < fade) win *= el / fade;
         if (life < fade) win *= life / fade;
         this.hLevel[k] = win;
-        const rp = this.hBase[k] + pos, ip = Math.floor(rp), fr = rp - ip, j = ip & MASK, j1 = (ip + 1) & MASK;
+        // Con Reverse, cada bucle o grano se lee de atrás hacia delante.
+        const rp = this.hBase[k] + (reverse ? len - pos : pos), ip = Math.floor(rp), fr = rp - ip, j = ip & MASK, j1 = (ip + 1) & MASK;
         wl += (bufL[j] + fr * (bufL[j1] - bufL[j])) * win * this.hGl[k];
         wr += (bufR[j] + fr * (bufR[j1] - bufR[j])) * win * this.hGr[k];
         pos += this.hRate[k];
@@ -464,6 +483,11 @@ export class EnjambreEngine {
       const kk = sMix * (Math.PI / 2);
       const dryG = bypass ? 1 : Math.cos(kk), wetG = Math.sin(kk);
       let ol = xl * dryG + wl * wetG, or = xr * dryG + wr * wetG;
+      // Ruta Post: el looper graba lo que se oye (sin el propio bucle) y lo suma a la salida.
+      if (!pre) {
+        looper.tick(ol, or, loopSpeed, reverse, loopFade);
+        ol += looper.outL * loopLevel; or += looper.outR * loopLevel;
+      }
       // Limitador de salida: transparente hasta 0,9 y redondeado por encima (nunca pasa de 1).
       if (ol > 0.9) ol = 0.9 + 0.1 * Math.tanh((ol - 0.9) * 10); else if (ol < -0.9) ol = -0.9 - 0.1 * Math.tanh((-ol - 0.9) * 10);
       if (or > 0.9) or = 0.9 + 0.1 * Math.tanh((or - 0.9) * 10); else if (or < -0.9) or = -0.9 - 0.1 * Math.tanh((-or - 0.9) * 10);
@@ -504,6 +528,9 @@ export class EnjambreEngine {
     const t: Telemetry = {
       t: 'tel', cpu, inPeak: this.inPeak, outPeak: this.outPeak, hist,
       heads: Float32Array.from(heads), stepPhase: this.sc / stepLen, step: this.step,
+      loopState: this.looper.state, loopLen: this.looper.len / this.sr,
+      loopPos: this.looper.len ? this.looper.pos / this.looper.len : 0,
+      loopLayer: this.looper.hasLayer, loopPending: this.looper.pending !== null,
     };
     this.inPeak = 0; this.outPeak = 0;
     return t;

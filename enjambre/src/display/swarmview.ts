@@ -23,7 +23,8 @@ export function drawSwarmView(g: G, w: number, h: number, info: SwarmInfo, tel: 
   const small = h < 190, narrow = w < 420;
   const meterW = 34, pad = 12;
   const gx = pad, gw = w - pad * 2 - meterW - 8;
-  const top = small ? 46 : 70, gh = h - top - 14;
+  const loopH = 16;
+  const top = small ? 46 : 70, gh = h - top - 14 - loopH - 6;
 
   // --- Cabecera: motor, variación y tempo ---
   g.textBaseline = 'top';
@@ -85,6 +86,25 @@ export function drawSwarmView(g: G, w: number, h: number, info: SwarmInfo, tel: 
     g.fillStyle = C.dim; g.font = '600 13px system-ui, sans-serif';
     const t = 'Entrada apagada · pulsa I/O, o Probar para oírlo';
     if (g.measureText(t).width < gw - 16) g.fillText(t, gx + 8, top + gh - 22);
+  }
+
+  // --- Looper: barra con la posición dentro del bucle y su estado ---
+  if (tel) {
+    const ly = top + gh + 6, st = tel.loopState;
+    g.fillStyle = C.bg; g.fillRect(gx, ly, gw, loopH);
+    const col = st === 1 ? C.hot : st === 3 ? '#ffb000' : st === 2 ? C.accent : C.dim;
+    if (st === 1) {
+      // Grabando: la barra crece con lo grabado (escala de 60 s).
+      g.fillStyle = col; g.fillRect(gx, ly, Math.min(1, tel.loopLen / 60) * gw, loopH);
+    } else if (st >= 2) {
+      g.fillStyle = col; g.globalAlpha = 0.35; g.fillRect(gx, ly, gw, loopH); g.globalAlpha = 1;
+      g.fillRect(gx + tel.loopPos * gw - 1.5, ly, 3, loopH);
+    }
+    g.fillStyle = st === 0 ? C.dim : C.text; g.font = '600 11px system-ui, sans-serif'; g.textBaseline = 'middle';
+    const names = ['LOOPER vacío', 'GRABANDO', 'BUCLE', 'SOBREGRABANDO', 'BUCLE parado'];
+    const txt = `${names[st]}${st ? ` · ${tel.loopLen.toFixed(1)} s` : ''}${tel.loopLayer ? ' · undo' : ''}${tel.loopPending ? ' · espera al paso' : ''}`;
+    g.fillText(txt, gx + 6, ly + loopH / 2 + 1);
+    g.textBaseline = 'top';
   }
 
   // --- Medidores de entrada y salida ---

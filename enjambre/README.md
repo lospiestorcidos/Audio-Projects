@@ -40,24 +40,40 @@ feedback en Pattern) y **Shape** la forma de cada bucle o grano: Plana, Crece, G
 
 | Página | Controles |
 |---|---|
-| Efecto | Activity, Repeats, Shape, Filter, Mix, Time, Space, Loop (fase 2) |
-| Shift | Ganancia, Mod Depth, Mod Rate, Resonancia, Vol. efecto, Vel. loop (fase 2), Sala, Fade loop (fase 2) |
+| Efecto | Activity, Repeats, Shape, Filter, Mix, Time, Space, Loop (nivel del bucle) |
+| Shift | Ganancia, Mod Depth, Mod Rate, Resonancia, Vol. efecto, Vel. loop, Sala, Fade loop |
+| Looper | Loop, Stop, Undo, Clear, Reverse, Ruta loop, Cuantizar, Hold |
 | Motor | Motor, Variación, I/O, Fuente, BPM, MIDI Clock, Tap, Probar |
 
-Abajo, siempre a mano: I/O, Tap, Hold, Bypass y Probar.
+Abajo, siempre a mano: Loop, Stop, Hold, Bypass e I/O.
+
+## Looper
+
+- Hasta **60 s estéreo**. La memoria (unos 46 MB) se reserva la primera vez que se graba.
+- **Loop** es un botón único: Grabar → Cerrar → Sobregrabar → Fin de la sobregrabación → … Con el
+  bucle parado, vuelve a reproducirlo desde el principio.
+- **Undo** quita la última sobregrabación (una capa). Al empezar otra, la anterior queda fijada.
+- **Stop** para con un fundido de la duración de **Fade loop** (de 10 ms a 8 s). **Clear** lo borra.
+- **Vel. loop**: de 1/4x a 4x (cambia el tono, como una cinta). **Reverse** da la vuelta al bucle y
+  también a los bucles y granos de los motores.
+- **Ruta loop**: *Post* graba lo que se oye y lo reproduce tal cual; *Pre* graba la entrada y su
+  reproducción pasa por el efecto, como si fuera otra fuente.
+- **Cuantizar**: grabar, cerrar y empezar a sobregrabar esperan al siguiente paso de la rejilla, así
+  el bucle mide un número exacto de pasos del tempo.
+- Los bucles no se guardan: se pierden al cerrar la app.
 
 ## MIDI
 
 - **Tabla de CC del Microcosm** (la misma numeración que DigiSwarm), en cualquier canal: 5 Time en
   pasos, 6 Activity, 7 Shape, 8 Filter, 9 Mix, 10 Time, 11 Repeats, 12 Space, 13 Loop, 14 Mod Rate,
-  15 Resonancia, 16 Vol. efecto, 17/18 Vel. loop, 19 Mod Depth, 20 Sala, 21 Fade loop, 48 Hold,
-  102 Bypass.
+  15 Resonancia, 16 Vol. efecto, 17/18 Vel. loop, 19 Mod Depth, 20 Sala, 21 Fade loop, 23/47
+  Reverse, 24 Ruta Pre, 27 Cuantizar, 48 Hold, 102 Bypass. Looper (con valor 64 o más): 28 Grabar,
+  29 Reproducir, 30 Sobregrabar, 31 Stop, 34 Borrar, 35 Deshacer.
 - **MIDI clock** y el asistente de controlador, como en Ecos. Solo donde el navegador tiene Web MIDI
   (Chrome o Edge en el ordenador): Safari en iPad no recibe MIDI.
 
 ## Pendiente
 
-- Fase 2: looper (60 s, una capa de sobregrabación y deshacer), Reverse, Loop, Vel. loop y Fade loop.
 - Fase 3: los otros 7 motores (Seq, Drone, Rake, Chops, Stutter, Arp, Warp).
 
 ## Sin validar

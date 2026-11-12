@@ -40,8 +40,16 @@ export const TIMES = ['1 compás', '1/2', '1/4', '1/8', '1/16', '1/32'] as const
 export const TIME_BEATS = [4, 2, 1, 0.5, 0.25, 0.125];
 /** Salas de la reverb (Space). */
 export const ROOMS = ['Pequeña', 'Sala', 'Grande', 'Infinita'] as const;
-/** Velocidades del looper (fase 2). */
+/** Velocidades del looper y su factor. */
 export const LOOP_SPEEDS = ['1/4x', '1/2x', '1x', '2x', '4x'] as const;
+export const LOOP_SPEED_RATES = [0.25, 0.5, 1, 2, 4];
+/**
+ * Dónde está el looper. Post: graba lo que se oye (la señal y el efecto) y lo reproduce tal cual.
+ * Pre: graba la entrada y su reproducción pasa por el efecto, como si fuera otra fuente.
+ */
+export const LOOP_ROUTES = ['Post', 'Pre'] as const;
+/** Duración del fundido al parar el bucle, en segundos (Fade loop de 0 a 1). */
+export const loopFadeSeconds = (v: number) => 0.01 + v * v * 8;
 /** Nombres de las formas de cada bucle o grano (Shape). */
 export const SHAPES = ['Plana', 'Crece', 'Golpe', 'Arco'] as const;
 
@@ -73,10 +81,13 @@ P('shift', 'modRate', 'Mod Rate', 0.05, 8, 0.6, 'log', 'Hz');
 P('shift', 'reso', 'Resonancia', 0, 1, 0.2, 'lin', '%');
 P('shift', 'fxVol', 'Vol. efecto', -24, 12, 0, 'lin', 'dB');
 E('shift', 'room', 'Sala', ROOMS, 1);
-// --- Looper (fase 2: se guardan ya en el esquema para que los presets no cambien) ---
+// --- Looper ---
 P('looper', 'loopLevel', 'Loop', 0, 1, 0.8, 'lin', '%');
 E('looper', 'loopSpeed', 'Vel. loop', LOOP_SPEEDS, 2);
-P('looper', 'loopFade', 'Fade loop', 0, 1, 0, 'lin', '%');
+P('looper', 'loopFade', 'Fade loop', 0, 1, 0, 'lin', 'fade');
+B('looper', 'reverse', 'Reverse', 0);
+E('looper', 'loopRoute', 'Ruta loop', LOOP_ROUTES, 0);
+B('looper', 'loopQuant', 'Cuantizar', 0);
 // --- Estados ---
 B('state', 'hold', 'Hold', 0);
 B('state', 'bypass', 'Bypass', 0);
@@ -128,6 +139,7 @@ export function formatParam(d: ParamDef, v: number): string {
   switch (d.unit) {
     case '%': return `${Math.round(v * 100)} %`;
     case 'shape': return SHAPES[Math.min(3, Math.round(v * 3))];
+    case 'fade': { const t = loopFadeSeconds(v); return t < 1 ? `${Math.round(t * 1000)} ms` : `${t.toFixed(1)} s`; }
     case 'filt':
       if (Math.abs(v) < FILTER_DEAD) return 'Off';
       return `${v < 0 ? 'LP' : 'HP'} ${Math.round(Math.abs(v) * 100)}`;
@@ -153,7 +165,9 @@ export type EngineMsg =
   /** Vacía el historial, las cabezas y la reverb. */
   | { t: 'clear' }
   /** Sonido de prueba: un arpegio corto que entra al efecto como si viniera de la entrada. */
-  | { t: 'pluck' };
+  | { t: 'pluck' }
+  /** Acción del looper (ver audio/worklet/looper.ts). */
+  | { t: 'loop'; a: 'loop' | 'rec' | 'play' | 'dub' | 'stop' | 'undo' | 'clear' };
 
 /** Puntos del historial de entrada que se envían a la UI, y segundos que abarcan. */
 export const HIST_POINTS = 200;
@@ -177,4 +191,12 @@ export interface Telemetry {
   /** Posición dentro del paso actual (0..1) y número de paso. */
   stepPhase: number;
   step: number;
+  /** Looper: estado (0 vacío, 1 grabando, 2 sonando, 3 sobregrabando, 4 parado), duración en s, posición 0..1. */
+  loopState: number;
+  loopLen: number;
+  loopPos: number;
+  /** Hay una sobregrabación que se puede deshacer. */
+  loopLayer: boolean;
+  /** Hay una acción esperando al siguiente paso (Cuantizar). */
+  loopPending: boolean;
 }

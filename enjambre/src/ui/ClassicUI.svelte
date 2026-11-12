@@ -3,6 +3,7 @@
   import { PAGES, slotsFor } from '../state/pages.svelte';
   import { ui } from '../state/store.svelte';
   import Display from './Display.svelte';
+  import ELooper from './ELooper.svelte';
   import EMotor from './EMotor.svelte';
   import Enc from './Enc.svelte';
   import Strip from './Strip.svelte';
@@ -20,7 +21,9 @@
     {/each}
   </nav>
   <section class="params">
-    {#if ui.epage === 'motor'}
+    {#if ui.epage === 'looper'}
+      <ELooper />
+    {:else if ui.epage === 'motor'}
       <EMotor />
     {:else}
       {#each slots as s, i (ui.epage + i + (s?.id ?? ''))}
