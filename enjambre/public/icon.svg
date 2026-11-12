@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0b0d10"/>
+  <!-- Un enjambre de granos, más denso hacia la derecha. -->
+  <circle cx="85" cy="290" r="6" fill="#a78bfa" opacity="0.35"/>
+  <circle cx="126" cy="306" r="6" fill="#a78bfa" opacity="0.38"/>
+  <circle cx="134" cy="243" r="7" fill="#a78bfa" opacity="0.40"/>
+  <circle cx="153" cy="255" r="7" fill="#a78bfa" opacity="0.43"/>
+  <circle cx="179" cy="268" r="8" fill="#a78bfa" opacity="0.45"/>
+  <circle cx="201" cy="231" r="9" fill="#a78bfa" opacity="0.48"/>
+  <circle cx="214" cy="132" r="8" fill="#a78bfa" opacity="0.51"/>
+  <circle cx="235" cy="355" r="9" fill="#a78bfa" opacity="0.53"/>
+  <circle cx="229" cy="296" r="11" fill="#a78bfa" opacity="0.56"/>
+  <circle cx="242" cy="294" r="11" fill="#a78bfa" opacity="0.58"/>
+  <circle cx="268" cy="196" r="9" fill="#a78bfa" opacity="0.61"/>
+  <circle cx="263" cy="320" r="10" fill="#a78bfa" opacity="0.64"/>
+  <circle cx="292" cy="199" r="12" fill="#a78bfa" opacity="0.66"/>
+  <circle cx="297" cy="285" r="11" fill="#a78bfa" opacity="0.69"/>
+  <circle cx="318" cy="237" r="13" fill="#a78bfa" opacity="0.71"/>
+  <circle cx="321" cy="198" r="15" fill="#a78bfa" opacity="0.74"/>
+  <circle cx="338" cy="200" r="12" fill="#a78bfa" opacity="0.77"/>
+  <circle cx="340" cy="494" r="16" fill="#a78bfa" opacity="0.79"/>
+  <circle cx="342" cy="230" r="16" fill="#a78bfa" opacity="0.82"/>
+  <circle cx="370" cy="258" r="16" fill="#a78bfa" opacity="0.84"/>
+  <circle cx="383" cy="198" r="16" fill="#a78bfa" opacity="0.87"/>
+  <circle cx="384" cy="396" r="16" fill="#a78bfa" opacity="0.90"/>
+  <circle cx="401" cy="364" r="18" fill="#a78bfa" opacity="0.92"/>
+  <circle cx="389" cy="216" r="19" fill="#a78bfa" opacity="0.95"/>
+  <circle cx="415" cy="455" r="16" fill="#a78bfa" opacity="0.97"/>
+  <circle cx="417" cy="247" r="19" fill="#a78bfa" opacity="1.00"/>
+</svg>

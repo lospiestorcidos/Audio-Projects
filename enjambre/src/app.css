@@ -1,0 +1,35 @@
+/* Tema oscuro de alto contraste. Los mismos colores que src/display/theme.ts. */
+:root {
+  --bg: #0b0d10;
+  --panel: #14181d;
+  --panel2: #1c2229;
+  --line: #2b343e;
+  --dim: #8794a3;
+  --text: #f1f4f7;
+  --accent: #a78bfa;
+  --accent2: #35d0ff;
+  --hot: #ff5a4d;
+  font-family: system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+* { box-sizing: border-box; }
+html, body, #app {
+  margin: 0; height: 100%; width: 100%; overflow: hidden;
+  /* Sin scroll, zoom, selección ni menús contextuales accidentales en iPad. */
+  overscroll-behavior: none; touch-action: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body { position: fixed; inset: 0; background: var(--bg); }
+button, select, input { font: inherit; color: inherit; }
+button {
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+  min-height: 40px; padding: 0 14px; font-weight: 600; touch-action: manipulation; cursor: pointer;
+}
+button.on { background: var(--accent); border-color: var(--accent); color: #000; }
+button:disabled { opacity: 0.4; }
+select {
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+  min-height: 40px; padding: 0 10px; font-weight: 600; touch-action: manipulation;
+}
